@@ -42,7 +42,7 @@ public:
 private:
     int level; // 跳表层数
     size_t count; // 跳表元素计数
-    uint64_t memfpchar; // 用以估计字符串的内存占用
+    uint64_t memfp_char; // 用以估计字符串的内存占用
 
     Node* head; // 跳表首节点
 

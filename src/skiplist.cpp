@@ -1,7 +1,7 @@
 # include "skiplist.h"
 # include <cstring>
 
-SkipList::SkipList() : level(0), count(0), memfpchar(0){
+SkipList::SkipList() : level(0), count(0), memfp_char(0){
     head = new Node;
     head->forward = new Node*[MAX_LEVEL];
     memset(head->forward, 0, sizeof(Node*)*MAX_LEVEL);
@@ -58,7 +58,7 @@ void SkipList::Put(uint64_t key, const std::string &val) {
     insertNode->val = val;
     insertNode->forward = new Node*[lvl];
     memset(insertNode->forward, 0, sizeof(Node*)*lvl);
-    memfpchar += insertNode->val.capacity();
+    memfp_char += insertNode->val.capacity();
 
     for(int l=0;l<lvl && update[l];l++){
         insertNode->forward[l] = update[l]->forward[l];
@@ -113,7 +113,7 @@ bool SkipList::Del(uint64_t key) {
         if(update[lvl]->forward[lvl]!=p) break;
         update[lvl]->forward[lvl]=p->forward[lvl];
     }
-    memfpchar -= p->val.capacity();
+    memfp_char -= p->val.capacity();
     count--;
     delete[] p->forward;
     delete p;
@@ -138,7 +138,7 @@ void SkipList::Clear() {
     memset(head->forward, 0, sizeof(Node*)*MAX_LEVEL);
     level=0;
     count=0;
-    memfpchar=0;
+    memfp_char=0;
 }
 
 // 判断跳表是否为空
@@ -149,5 +149,5 @@ size_t SkipList::Size() const {return count;}
 
 // 估计键值对的内存占用
 uint64_t SkipList::Space() const {
-    return count*sizeof(uint64_t) + memfpchar*sizeof(char);
+    return count*sizeof(uint64_t) + memfp_char * sizeof(char);
 }

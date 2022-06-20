@@ -5,8 +5,6 @@
 #include <string>
 #include <cstring>
 
-SSTable::SSTable(std::string dbpath) :path(dbpath){}
-
 // Minor Compaction
 void SSTable::BuildFromMem(SkipList &sl) {
     std::ofstream sstfile(path, std::ios::out | std::ios::binary);
