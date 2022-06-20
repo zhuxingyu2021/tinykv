@@ -1,9 +1,14 @@
 #include "sstable.h"
-#include "option.h"
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <cstring>
+#include "option.h"
+
+SSTable::SSTable(uint64_t id, Cache* tablecache, Cache* blockcache):
+tbl_id(id), tbl_cache(tablecache),blk_cache(blockcache),loaded(false){
+    path = std::string(Option::DB_PATH) + std::to_string(tbl_id) + ".sst";
+}
 
 // Minor Compaction
 void SSTable::BuildFromMem(SkipList &sl) {
@@ -78,8 +83,11 @@ void SSTable::BuildFromMem(SkipList &sl) {
     }
 
     // 2. 向文件中写入IndexBlock
-    size_t ib_pos = pos_db; // IndexBlock的起始位置
+    ib_pos = pos_db; // IndexBlock的起始位置
     sstfile.write(buffer_ib, offset_ib);
+    if(tbl_cache){
+        tbl_cache->Put(tbl_id, 0, buffer_ib, offset_ib);
+    }
 
     // 3. 写入footer信息
     sstfile.write((char*)&ib_pos, sizeof(size_t));
@@ -87,4 +95,14 @@ void SSTable::BuildFromMem(SkipList &sl) {
     delete[] db;
     delete[] buffer_ib;
     sstfile.close();
+
+    loaded = true;
+}
+
+void SSTable::LoadDataBlockFromBuf(char *buf, size_t bufsz, std::map<uint64_t,std::string>& db) {
+    // TODO
+}
+
+void SSTable::LoadIndexBlockFromBuf(char *buf, size_t bufsz, std::map<uint64_t, std::pair<size_t, size_t>> &ib) {
+    // TODO
 }

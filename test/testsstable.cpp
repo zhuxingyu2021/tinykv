@@ -12,6 +12,6 @@ int main()
         std::string val = std::string("Element:")+std::to_string(key)+std::string(" ")+std::to_string(rand())+std::string(" end");
         sl.Put(key, val);
     }
-    SSTable sst("testsst.db", nullptr, nullptr);
+    SSTable sst(0, nullptr, nullptr);
     sst.BuildFromMem(sl);
 }

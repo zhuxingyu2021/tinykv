@@ -38,7 +38,7 @@ public:
     Iterator begin() const{return Iterator(head->forward[0]);}
     Iterator end() const{return Iterator(nullptr);}
 
-    const int MAX_LEVEL = 20; // 跳表的最大层数
+    static const int MAX_LEVEL = 20; // 跳表的最大层数
 private:
     int level; // 跳表层数
     size_t count; // 跳表元素计数
