@@ -30,7 +30,7 @@ int SkipList::randLevel() {
 
 
 // 在跳表中插入或更新键值对(key,val)
-void SkipList::put(uint64_t key, const std::string &val) {
+void SkipList::Put(uint64_t key, const std::string &val) {
     // 1. 查找插入位置
     Node* update[MAX_LEVEL];
     memset(update, 0, sizeof(Node*)*MAX_LEVEL);
@@ -74,7 +74,7 @@ void SkipList::put(uint64_t key, const std::string &val) {
 }
 
 // 从跳表中获得键key的值，若键key不存在，则返回空字符串
-std::string SkipList::get(uint64_t key) const {
+std::string SkipList::Get(uint64_t key) const {
     Node* p = head;
     for(int l=level-1;l>=0;l--)
     {
@@ -89,7 +89,7 @@ std::string SkipList::get(uint64_t key) const {
 }
 
 // 删除跳表中的键值对(key,val)，若成功则返回true，否则返回false
-bool SkipList::del(uint64_t key) {
+bool SkipList::Del(uint64_t key) {
     // 1. 查找删除位置
     Node* update[MAX_LEVEL];
     memset(update, 0, sizeof(Node*)*MAX_LEVEL);
@@ -127,7 +127,7 @@ bool SkipList::del(uint64_t key) {
 }
 
 // 清空跳表
-void SkipList::clear() {
+void SkipList::Clear() {
     Node* p = head->forward[0];
     while(p != nullptr){
         auto tmp = p;
@@ -142,12 +142,12 @@ void SkipList::clear() {
 }
 
 // 判断跳表是否为空
-bool SkipList::empty() const {return (head->forward[0] == nullptr);}
+bool SkipList::Empty() const {return (head->forward[0] == nullptr);}
 
 // 获得跳表中键值对的个数
-size_t SkipList::size() const {return count;}
+size_t SkipList::Size() const {return count;}
 
 // 估计键值对的内存占用
-uint64_t SkipList::space() const {
+uint64_t SkipList::Space() const {
     return count*sizeof(uint64_t) + memfpchar*sizeof(char);
 }

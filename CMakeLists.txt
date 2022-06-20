@@ -7,4 +7,4 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCDIR)
 
 add_executable(testskiplist ${PROJECT_SOURCE_DIR}/test/testskiplist.cpp ${SRCDIR})
-
+add_executable(testsstable ${PROJECT_SOURCE_DIR}/test/testsstable.cpp ${SRCDIR})
