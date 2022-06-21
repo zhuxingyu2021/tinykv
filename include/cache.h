@@ -6,12 +6,11 @@
 #include <list>
 #include <string>
 #include <map>
+#include <exception>
 
 class CacheMem{
 public:
     CacheMem(uint64_t key, uint64_t key2):_key(key),_key2(key2){}
-    virtual void LoadBuf(char* buf, size_t bufsz)=0;
-
     friend class Cache;
 private:
     size_t sz; // 缓存区大小
@@ -21,15 +20,13 @@ private:
 
 class TableCacheMem: public CacheMem{
 public:
-    TableCacheMem(uint64_t key, uint64_t key2):CacheMem(key, key2){}
-    void LoadBuf(char* buf, size_t bufsz);
+    TableCacheMem(uint64_t key, char* buf, size_t bufsz);
     std::map<uint64_t,std::pair<size_t,size_t>> ib; // 缓存IndexBlock
 };
 
 class BlockCacheMem: public CacheMem{
 public:
-    BlockCacheMem(uint64_t key, uint64_t key2): CacheMem(key, key2){}
-    void LoadBuf(char* buf, size_t bufsz);
+    BlockCacheMem(uint64_t key, uint64_t key2,char* buf, size_t bufsz);
     std::map<uint64_t,std::string> db; // 缓存DataBlock
 };
 
@@ -41,6 +38,13 @@ public:
     CacheMem* Get(uint64_t key, uint64_t key2);
     CacheMem* Put(uint64_t key, uint64_t key2, char* pointer, size_t size);
     void Evict(uint64_t key, uint64_t key2);
+
+    class CacheSizeSmallException:std::exception{
+    public:
+        const char* what() const noexcept{
+            return "The size of cache is too small!";
+        }
+    };
 
     static const uint8_t CACHE_TYPE_BLOCKCACHE=0;
     static const uint8_t CACHE_TYPE_TABLECACHE=1;

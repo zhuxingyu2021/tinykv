@@ -2,13 +2,11 @@
 # include "sstable.h"
 # include "option.h"
 
-// 从文件读取的内存缓冲区中加载IndexBlock
-void TableCacheMem::LoadBuf(char *buf, size_t bufsz) {
+TableCacheMem::TableCacheMem(uint64_t key, char *buf, size_t bufsz): CacheMem(key,0) {
     SSTable::LoadIndexBlockFromBuf(buf,bufsz,ib);
 }
 
-// 从文件读取的内存缓冲区中加载DataBlock
-void BlockCacheMem::LoadBuf(char *buf, size_t bufsz) {
+BlockCacheMem::BlockCacheMem(uint64_t key, uint64_t key2, char *buf, size_t bufsz): CacheMem(key, key2){
     SSTable::LoadDataBlockFromBuf(buf,bufsz,db);
 }
 
@@ -47,13 +45,12 @@ CacheMem* Cache::Get(uint64_t key, uint64_t key2){
 
 // 把pointer指向的内存单元标记为缓存，并返回缓存地址
 CacheMem* Cache::Put(uint64_t key, uint64_t key2, char* pointer, size_t size){
-    if(size>max_size) throw "Cache size too small!";
+    if(size>max_size) throw CacheSizeSmallException();
 
     CacheMem* cm = nullptr;
-    if(cache_type==CACHE_TYPE_BLOCKCACHE) cm = new BlockCacheMem(key, key2);
-    else if(cache_type==CACHE_TYPE_TABLECACHE) cm = new TableCacheMem(key, key2);
+    if(cache_type==CACHE_TYPE_BLOCKCACHE) cm = new BlockCacheMem(key, key2, pointer,size);
+    else if(cache_type==CACHE_TYPE_TABLECACHE) cm = new TableCacheMem(key, pointer,size);
     else return nullptr;
-    cm->LoadBuf(pointer, size);
     cm->sz = size;
 
     // LRU淘汰链表最后的元素
@@ -81,7 +78,7 @@ void Cache::Evict(uint64_t key, uint64_t key2) {
             break;
         }
     }
-    if(((*iter)->_key!=key) || ((*iter)->_key2!=key2)) return;
+    if(iter==LRUList.end()) return;
 
     // 删除指定项
     total_size -= (*iter)->sz;

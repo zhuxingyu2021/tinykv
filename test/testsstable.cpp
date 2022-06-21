@@ -5,8 +5,8 @@
 #include "option.h"
 #include <cassert>
 
-#define INSERT_COUNT 500000
-#define RANGE_MAX 40000
+#define INSERT_COUNT 1000000
+#define RANGE_MAX 100000000
 
 #define ASSERT_RELEASE(expr) \
 if(!(expr)){std::cout << "Assert Failed! In source file"<< __FILE__ << ",line " << __LINE__ << std::endl;exit(-1);}
