@@ -12,7 +12,7 @@ void BlockCacheMem::LoadBuf(char *buf, size_t bufsz) {
     SSTable::LoadDataBlockFromBuf(buf,bufsz,db);
 }
 
-Cache::Cache(uint8_t cachetype):cache_type(cachetype) {
+Cache::Cache(uint8_t cachetype):cache_type(cachetype), total_size(0) {
     if(cache_type==CACHE_TYPE_BLOCKCACHE) max_size=Option::BLOCKCACHE_SIZE;
     else if(cache_type==CACHE_TYPE_TABLECACHE) max_size=Option::TABLECACHE_SIZE;
     else return;
@@ -34,7 +34,7 @@ CacheMem* Cache::Get(uint64_t key, uint64_t key2){
             break;
         }
     }
-    if(((*iter)->_key!=key) || ((*iter)->_key2!=key2)){ // 未找到
+    if(iter==LRUList.end()){ // 未找到
         return nullptr;
     }
 
@@ -47,6 +47,8 @@ CacheMem* Cache::Get(uint64_t key, uint64_t key2){
 
 // 把pointer指向的内存单元标记为缓存，并返回缓存地址
 CacheMem* Cache::Put(uint64_t key, uint64_t key2, char* pointer, size_t size){
+    if(size>max_size) throw "Cache size too small!";
+
     CacheMem* cm = nullptr;
     if(cache_type==CACHE_TYPE_BLOCKCACHE) cm = new BlockCacheMem(key, key2);
     else if(cache_type==CACHE_TYPE_TABLECACHE) cm = new TableCacheMem(key, key2);

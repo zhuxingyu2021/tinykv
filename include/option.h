@@ -5,7 +5,7 @@ struct Option{
     static const size_t DATA_BLOCK_SIZE=4096;
     static const size_t BUFFER_SIZE=4096;
     static const size_t BLOCKCACHE_SIZE=4096*16;
-    static const size_t TABLECACHE_SIZE=8192;
+    static const size_t TABLECACHE_SIZE=16384;
 
     static const bool BLOCKCACHE_ENABLED=true;
     static const bool TABLECHCHE_ENABLED=true;
