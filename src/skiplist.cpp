@@ -73,8 +73,8 @@ void SkipList::Put(uint64_t key, const std::string &val) {
     count++;
 }
 
-// 从跳表中获得键key的值，若键key不存在，则返回空字符串
-std::string SkipList::Get(uint64_t key) const {
+// 从跳表中获得键key的值并返回。若键key不存在，则is_failed对应的bool变量设置为true，表示查询失败；否则设置为false，表示查询成功。
+std::string SkipList::Get(uint64_t key, bool* is_failed) const {
     Node* p = head;
     for(int l=level-1;l>=0;l--)
     {
@@ -83,8 +83,12 @@ std::string SkipList::Get(uint64_t key) const {
     }
     p = p->forward[0];
     if(p!=nullptr) {
-        if (p->key == key) return p->val;
+        if (p->key == key) {
+            if(is_failed) *is_failed=false;
+            return p->val;
+        }
     }
+    if(is_failed) *is_failed=true;
     return "";
 }
 

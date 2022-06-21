@@ -10,7 +10,7 @@ public:
     explicit SkipList();
     ~SkipList();
     void Put(uint64_t key, const std::string& val);
-    std::string Get(uint64_t key) const;
+    std::string Get(uint64_t key, bool* is_failed) const;
     bool Del(uint64_t key);
 
     void Clear();

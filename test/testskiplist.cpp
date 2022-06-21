@@ -29,7 +29,7 @@ int main()
 
     for(int i=0;i<INSERT_COUNT;i++){
         auto key = rand()%RANGE_MAX;
-        auto slval = sl.Get(key);
+        auto slval = sl.Get(key, nullptr);
         auto miter = m.find(key);
         if(miter!=m.end()){
             auto mval = miter->second;
