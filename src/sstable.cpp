@@ -60,8 +60,6 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
 
     // 2. 从IndexBlock中查找key所在的DataBlock
     auto ib_iter = ib->lower_bound(key);
-    if(ib_iter->first!=key) ib_iter++;
-
     // key不存在
     if (ib_iter==ib->end()){SST_GET_FAILED}
 
@@ -93,7 +91,7 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
         char* buf_db = new char[db_sz];
         reader->seekg(db_pos, std::ios::beg);
         reader->read(buf_db, db_sz);
-        LoadDataBlockFromBuf(buf_db, ib_sz, *db);
+        LoadDataBlockFromBuf(buf_db, db_sz, *db);
         delete[] buf_db;
     }
 
@@ -128,7 +126,6 @@ void SSTable::BuildFromMem(SkipList &sl) {
     size_t entrysize_ib = sizeof(uint64_t) + 2*sizeof(size_t);
 
     for(auto kv:sl){
-        maxkey = kv.first;
         size_t lenval = kv.second.length();
         size_t entrysize_db = lenval * sizeof(char) + sizeof(size_t) + sizeof(uint64_t);
         if(offset_db + entrysize_db > Option::DATA_BLOCK_SIZE){ // 当前DataBlock已满
@@ -153,6 +150,7 @@ void SSTable::BuildFromMem(SkipList &sl) {
 
             pos_db = nowpos;
         }
+        maxkey = kv.first;
         *((size_t*)(db + offset_db)) = entrysize_db; //DataBlock Entry第一项：entry大小
         offset_db += sizeof(size_t);
         *((uint64_t*)(db + offset_db)) = maxkey; //DataBlock Entry第二项：key
