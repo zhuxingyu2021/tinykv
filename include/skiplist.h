@@ -11,13 +11,12 @@ public:
     ~SkipList();
     void Put(uint64_t key, const std::string& val);
     std::string Get(uint64_t key, bool* is_failed) const;
-    bool Del(uint64_t key);
 
     void Clear();
 
     bool Empty() const;
     size_t Size() const;
-    uint64_t Space() const;
+    size_t Space() const;
 
 
     struct Node{ // 跳表节点类型定义
@@ -42,7 +41,7 @@ public:
 private:
     int level; // 跳表层数
     size_t count; // 跳表元素计数
-    uint64_t memfp_char; // 用以估计字符串的内存占用
+    size_t memfp_char; // 用以估计字符串的内存占用
 
     Node* head; // 跳表首节点
 

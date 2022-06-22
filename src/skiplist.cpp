@@ -46,7 +46,9 @@ void SkipList::Put(uint64_t key, const std::string &val) {
     // 2. 插入节点
     p = p->forward[0];
     if(p!=nullptr) {
-        if (p->key == key) {
+        if (p->key == key) { // 更新节点
+            memfp_char -= p->val.capacity();
+            memfp_char += val.capacity();
             p->val = val;
             return;
         }
@@ -92,44 +94,6 @@ std::string SkipList::Get(uint64_t key, bool* is_failed) const {
     return "";
 }
 
-// 删除跳表中的键值对(key,val)，若成功则返回true，否则返回false
-bool SkipList::Del(uint64_t key) {
-    // 1. 查找删除位置
-    Node* update[MAX_LEVEL];
-    memset(update, 0, sizeof(Node*)*MAX_LEVEL);
-    Node* p = head;
-
-    for(int l=level-1;l>=0;l--)
-    {
-        while(p->forward[l]!= nullptr && p->forward[l]->key<key)
-            p = p->forward[l];
-        update[l] = p;
-    }
-
-    p = p->forward[0];
-    if(p==nullptr) return false;
-    if(p->key!=key) return false;
-
-    // 2. 删除节点p
-    int lvl;
-    for(lvl=0;lvl<level;lvl++)
-    {
-        if(update[lvl]->forward[lvl]!=p) break;
-        update[lvl]->forward[lvl]=p->forward[lvl];
-    }
-    memfp_char -= p->val.capacity();
-    count--;
-    delete[] p->forward;
-    delete p;
-
-    // 3. 重新计算跳表层数
-    lvl = level-1;
-    while(lvl>=0 && head->forward[lvl]== nullptr){
-        lvl--;level--;
-    }
-    return true;
-}
-
 // 清空跳表
 void SkipList::Clear() {
     Node* p = head->forward[0];
@@ -152,6 +116,6 @@ bool SkipList::Empty() const {return (head->forward[0] == nullptr);}
 size_t SkipList::Size() const {return count;}
 
 // 估计键值对的内存占用
-uint64_t SkipList::Space() const {
-    return count*sizeof(uint64_t) + memfp_char * sizeof(char);
+size_t SkipList::Space() const {
+    return count*sizeof(size_t) + memfp_char * sizeof(char);
 }

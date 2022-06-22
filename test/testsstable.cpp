@@ -29,18 +29,14 @@ int main()
     if(Option::BLOCKCACHE_ENABLED){
         blkcache=new Cache(Cache::CACHE_TYPE_BLOCKCACHE);
     }
-    SSTable sst(0, tblcache, blkcache);
+    SSTable sst(0,"test.sst", tblcache, blkcache);
     sst.BuildFromMem(sl);
 
     for(auto kv: m){
         ASSERT_RELEASE(sst.Get(kv.first, nullptr)==kv.second);
     }
 
-    if(Option::TABLECHCHE_ENABLED){
-        delete tblcache;
-    }
-    if(Option::BLOCKCACHE_ENABLED){
-        delete blkcache;
-    }
+    delete tblcache;
+    delete blkcache;
 
 }

@@ -30,7 +30,7 @@ public:
     std::map<uint64_t,std::string> db; // 缓存DataBlock
 };
 
-// 采用LRU算法实现TableCache和BlockCache
+// 采用LRU替换策略实现TableCache和BlockCache
 class Cache{
 public:
     explicit Cache(uint8_t cachetype);

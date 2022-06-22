@@ -10,11 +10,11 @@
 
 class SSTable{
 public:
-    SSTable(uint64_t id, Cache* tablecache, Cache* blockcache);
+    SSTable(uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache);
 
     std::string Get(uint64_t key, bool* is_failed) const;
 
-    void BuildFromMem(SkipList& sl);
+    void BuildFromMem(const SkipList& sl);
 
     static void LoadIndexBlockFromBuf(char* buf, size_t bufsz, std::map<uint64_t,std::pair<size_t,size_t>>& ib);
     static void LoadDataBlockFromBuf(char* buf, size_t bufsz, std::map<uint64_t,std::string>& db);

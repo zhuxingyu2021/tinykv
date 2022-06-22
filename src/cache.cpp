@@ -11,8 +11,8 @@ BlockCacheMem::BlockCacheMem(uint64_t key, uint64_t key2, char *buf, size_t bufs
 }
 
 Cache::Cache(uint8_t cachetype):cache_type(cachetype), total_size(0) {
-    if(cache_type==CACHE_TYPE_BLOCKCACHE) max_size=Option::BLOCKCACHE_SIZE;
-    else if(cache_type==CACHE_TYPE_TABLECACHE) max_size=Option::TABLECACHE_SIZE;
+    if(cachetype==CACHE_TYPE_BLOCKCACHE) max_size=Option::BLOCKCACHE_SIZE;
+    else if(cachetype==CACHE_TYPE_TABLECACHE) max_size=Option::TABLECACHE_SIZE;
     else return;
 }
 

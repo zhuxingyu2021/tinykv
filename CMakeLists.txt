@@ -3,8 +3,18 @@ project(lsmtree)
 
 set(CMAKE_CXX_STANDARD 17)
 
+set(CMAKE_VERBOSE_MAKEFILE ON)
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 include_directories(${PROJECT_SOURCE_DIR}/include)
 aux_source_directory(${PROJECT_SOURCE_DIR}/src SRCDIR)
 
-add_executable(testskiplist ${PROJECT_SOURCE_DIR}/test/testskiplist.cpp ${SRCDIR})
-add_executable(testsstable ${PROJECT_SOURCE_DIR}/test/testsstable.cpp ${SRCDIR})
+add_library(lsmtree SHARED ${SRCDIR})
+target_link_libraries(lsmtree PRIVATE Threads::Threads)
+
+add_executable(testskiplist ${PROJECT_SOURCE_DIR}/test/testskiplist.cpp)
+target_link_libraries(testskiplist lsmtree)
+add_executable(testsstable ${PROJECT_SOURCE_DIR}/test/testsstable.cpp)
+target_link_libraries(testsstable lsmtree)

@@ -4,9 +4,8 @@
 #include <cstring>
 #include "option.h"
 
-SSTable::SSTable(uint64_t id, Cache* tablecache, Cache* blockcache):
-tbl_id(id), tbl_cache(tablecache),blk_cache(blockcache){
-    path = std::string(Option::DB_PATH) + std::to_string(tbl_id) + ".sst";
+SSTable::SSTable(uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache):
+tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache){
     std::ifstream reader(path, std::ios::in | std::ios::binary);
     if(reader.good()){ // 从文件中读取footer信息
         reader.seekg(-FOOTER_SIZE, std::ios::end);
@@ -110,7 +109,7 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
 }
 
 // Minor Compaction
-void SSTable::BuildFromMem(SkipList &sl) {
+void SSTable::BuildFromMem(const SkipList &sl) {
     std::ofstream sstfile(path, std::ios::out | std::ios::binary);
 
     // 1. 构造DataBlock和IndexBlock，同时往文件中写入DataBlock
