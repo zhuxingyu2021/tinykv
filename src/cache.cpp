@@ -1,6 +1,5 @@
 # include "cache.h"
 # include "sstable.h"
-# include "option.h"
 
 TableCacheMem::TableCacheMem(uint64_t key, char *buf, size_t bufsz): CacheMem(key,0) {
     SSTable::LoadIndexBlockFromBuf(buf,bufsz,ib);
@@ -10,9 +9,10 @@ BlockCacheMem::BlockCacheMem(uint64_t key, uint64_t key2, char *buf, size_t bufs
     SSTable::LoadDataBlockFromBuf(buf,bufsz,db);
 }
 
-Cache::Cache(uint8_t cachetype):cache_type(cachetype), total_size(0) {
-    if(cachetype==CACHE_TYPE_BLOCKCACHE) max_size=Option::BLOCKCACHE_SIZE;
-    else if(cachetype==CACHE_TYPE_TABLECACHE) max_size=Option::TABLECACHE_SIZE;
+Cache::Cache(Option& op,uint8_t cachetype):cache_type(cachetype), total_size(0) {
+    option = op;
+    if(cachetype==CACHE_TYPE_BLOCKCACHE) max_size=option.BLOCKCACHE_SIZE;
+    else if(cachetype==CACHE_TYPE_TABLECACHE) max_size=option.TABLECACHE_SIZE;
     else return;
 }
 

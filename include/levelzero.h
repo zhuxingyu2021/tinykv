@@ -6,9 +6,11 @@
 #include "skiplist.h"
 #include <vector>
 
+#include "option.h"
+
 class LevelZero{
 public:
-    LevelZero(Cache* tablecache, Cache* blockcache);
+    LevelZero(Option& op, Cache* tablecache, Cache* blockcache);
     std::string Get(uint64_t key, bool* is_failed) const;
 
     void MinorCompaction(const SkipList& sl);
@@ -19,6 +21,8 @@ private:
 
     Cache* tbl_cache; // TableCache
     Cache* blk_cache; // BlockCache
+
+    Option option;
 };
 
 #endif //LSMTREE_LEVELZERO_H

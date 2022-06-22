@@ -8,6 +8,8 @@
 #include <map>
 #include <exception>
 
+#include "option.h"
+
 class CacheMem{
 public:
     CacheMem(uint64_t key, uint64_t key2):_key(key),_key2(key2){}
@@ -33,7 +35,7 @@ public:
 // 采用LRU替换策略实现TableCache和BlockCache
 class Cache{
 public:
-    explicit Cache(uint8_t cachetype);
+    Cache(Option& op,uint8_t cachetype);
     ~Cache();
     CacheMem* Get(uint64_t key, uint64_t key2);
     CacheMem* Put(uint64_t key, uint64_t key2, char* pointer, size_t size);
@@ -53,6 +55,8 @@ private:
     std::list<CacheMem*> LRUList;
     size_t total_size; // 总缓存大小
     size_t max_size; // 缓存大小上限
+
+    Option option;
 };
 
 #endif //LSMTREE_CACHE_H

@@ -1,19 +1,28 @@
 #include "db.h"
-#include "option.h"
 #include <cassert>
 
-DB::DB():compaction_thread(nullptr), compaction_thread_scheduled(false), imm_mem(nullptr) {
+void DB::initdb(){
     mem = new SkipList;
 
     tbl_cache= nullptr; blk_cache= nullptr;
-    if(Option::TABLECHCHE_ENABLED){
-        tbl_cache=new Cache(Cache::CACHE_TYPE_TABLECACHE);
+
+    if(option.TABLECHCHE_ENABLED){
+        tbl_cache=new Cache(option, Cache::CACHE_TYPE_TABLECACHE);
     }
-    if(Option::BLOCKCACHE_ENABLED){
-        blk_cache=new Cache(Cache::CACHE_TYPE_BLOCKCACHE);
+    if(option.BLOCKCACHE_ENABLED){
+        blk_cache=new Cache(option, Cache::CACHE_TYPE_BLOCKCACHE);
     }
 
-    level_0 = new LevelZero(tbl_cache, blk_cache);
+    level_0 = new LevelZero(option, tbl_cache, blk_cache);
+}
+
+DB::DB():compaction_thread(nullptr), compaction_thread_scheduled(false), imm_mem(nullptr) {
+    initdb();
+}
+
+DB::DB(Option& op):compaction_thread(nullptr), compaction_thread_scheduled(false), imm_mem(nullptr) {
+    option = op;
+    initdb();
 }
 
 DB::~DB() {
@@ -76,7 +85,7 @@ void DB::Del(uint64_t key) {
 // 调度后台compaction线程
 void DB::schedule() {
     if(!compaction_thread_scheduled){
-        if(mem->Space()>=Option::MAX_MEMTABLE_SIZE) { // 若MemTable超过一定大小，就调度compaction线程执行minor compaction
+        if(mem->Space()>=option.MAX_MEMTABLE_SIZE) { // 若MemTable超过一定大小，就调度compaction线程执行minor compaction
             assert(imm_mem==nullptr);
             // 将MemTable转变为Immutable MemTable
             imm_mem = mem;

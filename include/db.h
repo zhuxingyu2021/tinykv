@@ -7,10 +7,12 @@
 #include "skiplist.h"
 #include "levelzero.h"
 #include "cache.h"
+#include "option.h"
 
 class DB{
 public:
     explicit DB();
+    explicit DB(Option& op);
     ~DB();
 
     std::string Get(uint64_t key) const;
@@ -25,6 +27,8 @@ private:
     std::thread* compaction_thread; // 后台compaction线程
     bool compaction_thread_scheduled; // 判断后台compaction线程是否被调度
 
+    void initdb();
+
     void schedule();
     void compaction();
 
@@ -32,6 +36,8 @@ private:
 
     Cache* tbl_cache; // TableCache
     Cache* blk_cache; // BlockCache
+
+    Option option;
 };
 
 #endif //LSMTREE_DB_H

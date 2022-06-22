@@ -7,10 +7,11 @@
 #include <fstream>
 #include "cache.h"
 #include "skiplist.h"
+#include "option.h"
 
 class SSTable{
 public:
-    SSTable(uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache);
+    SSTable(Option& op,uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache);
 
     std::string Get(uint64_t key, bool* is_failed) const;
 
@@ -28,6 +29,8 @@ private:
     size_t ib_sz; //IndexBlock大小
     Cache* tbl_cache;
     Cache* blk_cache;
+
+    Option& option;
 };
 
 #endif //LSMTREE_SSTABLE_H

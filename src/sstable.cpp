@@ -2,10 +2,9 @@
 #include <iostream>
 #include <string>
 #include <cstring>
-#include "option.h"
 
-SSTable::SSTable(uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache):
-tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache){
+SSTable::SSTable(Option& op,uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache):
+tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op){
     std::ifstream reader(path, std::ios::in | std::ios::binary);
     if(reader.good()){ // 从文件中读取footer信息
         reader.seekg(-FOOTER_SIZE, std::ios::end);
@@ -113,11 +112,11 @@ void SSTable::BuildFromMem(const SkipList &sl) {
     std::ofstream sstfile(path, std::ios::out | std::ios::binary);
 
     // 1. 构造DataBlock和IndexBlock，同时往文件中写入DataBlock
-    char* db = new char[Option::DATA_BLOCK_SIZE];
+    char* db = new char[option.DATA_BLOCK_SIZE];
     int offset_db = 0;
     int dbcount = 0;
 
-    size_t buffersz = Option::BUFFER_SIZE;
+    size_t buffersz = option.BUFFER_SIZE;
     char* buffer_ib = new char[buffersz];
     int offset_ib = 0;
     int maxkey; // IndexBlock的索引
@@ -127,7 +126,7 @@ void SSTable::BuildFromMem(const SkipList &sl) {
     for(auto kv:sl){
         size_t lenval = kv.second.length();
         size_t entrysize_db = lenval * sizeof(char) + sizeof(size_t) + sizeof(uint64_t);
-        if(offset_db + entrysize_db > Option::DATA_BLOCK_SIZE){ // 当前DataBlock已满
+        if(offset_db + entrysize_db > option.DATA_BLOCK_SIZE){ // 当前DataBlock已满
             sstfile.write(db, offset_db);
             offset_db = 0;
             dbcount++;
