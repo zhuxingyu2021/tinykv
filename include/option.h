@@ -1,7 +1,11 @@
 #ifndef LSMTREE_OPTION_H
 #define LSMTREE_OPTION_H
 
+#include <cstddef>
+
 struct Option{
+    int MAX_LEVEL=8;
+
     size_t MAX_MEMTABLE_SIZE=1024*32;
 
     size_t DATA_BLOCK_SIZE=4096;

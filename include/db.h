@@ -8,6 +8,7 @@
 #include "levelzero.h"
 #include "cache.h"
 #include "option.h"
+#include "manifest.h"
 
 class DB{
 public:
@@ -21,8 +22,8 @@ public:
 
 private:
     SkipList* mem; // MemTable
-    SkipList* imm_mem; // Immutable MemTable
-    mutable std::mutex imm_mem_mutex; // Immutable MemTable的mutex
+
+    Utils::ImmutableMemTable imm_mem; // Immutable MemTable
 
     std::thread* compaction_thread; // 后台compaction线程
     bool compaction_thread_scheduled; // 判断后台compaction线程是否被调度
@@ -38,6 +39,7 @@ private:
     Cache* blk_cache; // BlockCache
 
     Option option;
+    Manifest* manifest;
 };
 
 #endif //LSMTREE_DB_H

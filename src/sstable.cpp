@@ -2,14 +2,23 @@
 #include <iostream>
 #include <string>
 #include <cstring>
+#include <cstdio>
 
-SSTable::SSTable(Option& op,uint64_t id,std::string&& path, Cache* tablecache, Cache* blockcache):
-tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op){
+// 构建新的SSTable
+SSTable::SSTable(Option& op, std::string&& path, Cache* tablecache, Cache* blockcache):
+path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op){}
+
+// 从文件构造SSTable
+SSTable::SSTable(Option &op, uint64_t id, std::string &&path, Cache *tablecache, Cache *blockcache, uint64_t minkey, uint64_t maxkey):
+tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op), min_key(minkey), max_key(maxkey){
     std::ifstream reader(path, std::ios::in | std::ios::binary);
     if(reader.good()){ // 从文件中读取footer信息
         reader.seekg(-FOOTER_SIZE, std::ios::end);
         reader.read((char*)&ib_pos, sizeof(size_t));
         reader.read((char*)&ib_sz, sizeof(size_t));
+    }else{
+        std::cerr << "SSTable " << path << " can't find!" << std::endl;
+        exit(-1);
     }
     reader.close();
 }
@@ -108,7 +117,7 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
 }
 
 // Minor Compaction
-void SSTable::BuildFromMem(const SkipList &sl) {
+void SSTable::BuildFromMem(SkipList &sl) {
     std::ofstream sstfile(path, std::ios::out | std::ios::binary);
 
     // 1. 构造DataBlock和IndexBlock，同时往文件中写入DataBlock
@@ -119,9 +128,12 @@ void SSTable::BuildFromMem(const SkipList &sl) {
     size_t buffersz = option.BUFFER_SIZE;
     char* buffer_ib = new char[buffersz];
     int offset_ib = 0;
-    int maxkey; // IndexBlock的索引
+    int max_db_key; // IndexBlock的索引
     size_t pos_db = sstfile.tellp();
     size_t entrysize_ib = sizeof(uint64_t) + 2*sizeof(size_t);
+
+    auto firstkv = *(sl.begin());
+    min_key = firstkv.first;
 
     for(auto kv:sl){
         size_t lenval = kv.second.length();
@@ -139,7 +151,7 @@ void SSTable::BuildFromMem(const SkipList &sl) {
                 delete[] buffer_ib;
                 buffer_ib = new_buffer;
             }
-            *((uint64_t*)(buffer_ib + offset_ib)) = maxkey; // IndexBlock Entry第一项：DataBlock最大值
+            *((uint64_t*)(buffer_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
             offset_ib += sizeof(uint64_t);
             *((size_t*)(buffer_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
             offset_ib += sizeof(size_t);
@@ -148,10 +160,10 @@ void SSTable::BuildFromMem(const SkipList &sl) {
 
             pos_db = nowpos;
         }
-        maxkey = kv.first;
+        max_db_key = kv.first;
         *((size_t*)(db + offset_db)) = entrysize_db; //DataBlock Entry第一项：entry大小
         offset_db += sizeof(size_t);
-        *((uint64_t*)(db + offset_db)) = maxkey; //DataBlock Entry第二项：key
+        *((uint64_t*)(db + offset_db)) = max_db_key; //DataBlock Entry第二项：key
         offset_db += sizeof(uint64_t);
         memcpy(db + offset_db, kv.second.c_str(), lenval); //DataBlock Entry第三项：value
         offset_db += lenval;
@@ -169,7 +181,7 @@ void SSTable::BuildFromMem(const SkipList &sl) {
             delete[] buffer_ib;
             buffer_ib = new_buffer;
         }
-        *((uint64_t*)(buffer_ib + offset_ib)) = maxkey; // IndexBlock Entry第一项：DataBlock最大值
+        *((uint64_t*)(buffer_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
         offset_ib += sizeof(uint64_t);
         *((size_t*)(buffer_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
         offset_ib += sizeof(size_t);
@@ -177,15 +189,13 @@ void SSTable::BuildFromMem(const SkipList &sl) {
         offset_ib += sizeof(size_t);
 
         pos_db = nowpos;
+        max_key = max_db_key;
     }
 
     // 2. 向文件中写入IndexBlock
     ib_pos = pos_db; // IndexBlock的起始位置
     ib_sz = offset_ib; // IndexBlock的大小
     sstfile.write(buffer_ib, offset_ib);
-    if(tbl_cache){
-        tbl_cache->Put(tbl_id, 0, buffer_ib, offset_ib);
-    }
 
     // 3. 写入footer信息
     sstfile.write((char*)&ib_pos, sizeof(size_t));
@@ -194,6 +204,15 @@ void SSTable::BuildFromMem(const SkipList &sl) {
     delete[] db;
     delete[] buffer_ib;
     sstfile.close();
+}
+
+// 重命名SSTable文件
+void SSTable::Rename(uint64_t newid, std::string &&newpath) {
+    std::string old_path = path;
+    path = newpath;
+    tbl_id = newid;
+
+    rename(old_path.c_str(), path.c_str());
 }
 
 // 从文件读取的内存缓冲区中加载DataBlock

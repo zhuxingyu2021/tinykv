@@ -6,7 +6,6 @@
 #include <list>
 #include <string>
 #include <map>
-#include <exception>
 
 #include "option.h"
 
@@ -40,13 +39,7 @@ public:
     CacheMem* Get(uint64_t key, uint64_t key2);
     CacheMem* Put(uint64_t key, uint64_t key2, char* pointer, size_t size);
     void Evict(uint64_t key, uint64_t key2);
-
-    class CacheSizeSmallException:std::exception{
-    public:
-        const char* what() const noexcept{
-            return "The size of cache is too small!";
-        }
-    };
+    void Evict(uint64_t key);
 
     static const uint8_t CACHE_TYPE_BLOCKCACHE=0;
     static const uint8_t CACHE_TYPE_TABLECACHE=1;
@@ -56,7 +49,7 @@ private:
     size_t total_size; // 总缓存大小
     size_t max_size; // 缓存大小上限
 
-    Option option;
+    Option& option;
 };
 
 #endif //LSMTREE_CACHE_H

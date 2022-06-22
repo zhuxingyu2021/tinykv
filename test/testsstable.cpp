@@ -31,7 +31,7 @@ int main()
     if(default_option.BLOCKCACHE_ENABLED){
         blkcache=new Cache(default_option, Cache::CACHE_TYPE_BLOCKCACHE);
     }
-    SSTable sst(default_option, 0,"test.sst", tblcache, blkcache);
+    SSTable sst(default_option, "test.sst", tblcache, blkcache);
     sst.BuildFromMem(sl);
 
     for(auto kv: m){
