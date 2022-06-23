@@ -3,6 +3,7 @@
 #include "skiplist.h"
 #include <iostream>
 #include <map>
+#include <string>
 
 #define INSERT_COUNT 400
 #define RANGE_MAX 300
@@ -34,11 +35,7 @@ int main()
         if(miter!=m.end()){
             auto mval = miter->second;
             ASSERT_RELEASE(slval==mval);
-            ASSERT_RELEASE(sl.Del(key));
             m.erase(miter);
-        }
-        else{
-            ASSERT_RELEASE(!sl.Del(key));
         }
     }
 

@@ -2,6 +2,7 @@
 #define LSMTREE_DB_H
 
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <cstdint>
 #include "skiplist.h"
@@ -26,7 +27,7 @@ private:
     Utils::ImmutableMemTable imm_mem; // Immutable MemTable
 
     std::thread* compaction_thread; // 后台compaction线程
-    bool compaction_thread_scheduled; // 判断后台compaction线程是否被调度
+    volatile bool compaction_thread_scheduled; // 判断后台compaction线程是否被调度
 
     void initdb();
 

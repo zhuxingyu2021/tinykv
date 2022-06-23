@@ -5,6 +5,7 @@
 #include <map>
 #include <mutex>
 #include "skiplist.h"
+#include <shared_mutex>
 
 namespace Utils{
     // SSTid -> (min_key, max_key)
@@ -12,7 +13,7 @@ namespace Utils{
 
     struct ImmutableMemTable{
         SkipList* sl;
-        mutable std::mutex mutex;
+        mutable std::shared_mutex mutex;
     };
 }
 

@@ -1,6 +1,7 @@
 #include "db.h"
 #include "utils.h"
 #include <cassert>
+#include <filesystem>
 
 // 初始化
 void DB::initdb(){
@@ -17,6 +18,7 @@ void DB::initdb(){
     }
 
     // 读取并重写Manifest文件
+    std::filesystem::create_directory(option.DB_PATH);
     manifest = new Manifest(option);
     const Manifest::RecordType& record = manifest->GetRecord();
 
@@ -77,11 +79,11 @@ std::string DB::Get(uint64_t key) const {
 
     if(find_failed){
         // 2. 在Immutable MemTable中查找
-        imm_mem.mutex.lock();
+        std::shared_lock Lock(imm_mem.mutex);
         if(imm_mem.sl){
             val = imm_mem.sl->Get(key,&find_failed);
         }
-        imm_mem.mutex.unlock();
+        Lock.unlock();
 
         if(find_failed){
             // 3. 在Level 0中查找
@@ -110,6 +112,10 @@ void DB::Del(uint64_t key) {
 void DB::schedule() {
     if(!compaction_thread_scheduled){
         if(mem->Space()>=option.MAX_MEMTABLE_SIZE) { // 若MemTable超过一定大小，就调度compaction线程执行minor compaction
+            if(compaction_thread){
+                if(compaction_thread->joinable()) compaction_thread->join();
+            }
+
             assert(imm_mem.sl==nullptr);
             // 将MemTable转变为Immutable MemTable
             imm_mem.sl = mem;
@@ -124,9 +130,9 @@ void DB::schedule() {
 
 //后台compaction线程做的事情
 void DB::compaction() {
-    // TODO
+    compaction_thread_scheduled = true;
     if(imm_mem.sl){
         level_0->MinorCompaction(imm_mem);
     }
-    compaction_thread_scheduled = true;
+    compaction_thread_scheduled = false;
 }

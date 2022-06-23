@@ -2,6 +2,7 @@
 #define LSMTREE_LEVELZERO_H
 
 #include <mutex>
+#include <shared_mutex>
 #include "sstable.h"
 #include "skiplist.h"
 #include <vector>
@@ -21,7 +22,7 @@ public:
 
     void MinorCompaction(Utils::ImmutableMemTable& imm_mem);
 
-    mutable std::mutex level_0_mutex;
+    mutable std::shared_mutex level_0_mutex;
 private:
     std::vector<SSTable*> ssts;
 

@@ -3,9 +3,10 @@
 # include <sstream>
 
 # include <cstdio>
+# include <iostream>
 
 Manifest::Manifest(Option &op): option(op){
-    std::string path = std::string(op.DB_PATH) + "manifest.log";
+    std::string path = op.DB_PATH + "manifest.log";
     std::ifstream reader(path, std::ios::in);
 
     std::string line;
@@ -46,10 +47,12 @@ Manifest::Manifest(Option &op): option(op){
             cur_id = entry.first;
 
             // OP_CREATE level id min_key max_key
-            (*writer) << OP_CREATE << entry.second.level << cur_id << entry.second.min_key << entry.second.max_key;
+            (*writer) << OP_CREATE <<" " << entry.second.level << " " << cur_id << " " <<
+                entry.second.min_key << " " << entry.second.max_key << std::endl;
         }
     }else {
         writer = new std::ofstream(path, std::ios::out);
+        if(!(*writer)){std::cerr<<"Create manifest file failed!"<<std::endl; exit(-1);}
     }
 }
 
@@ -66,12 +69,12 @@ Manifest::RecordType &Manifest::GetRecord() {
 uint64_t Manifest::CreateSSTRecord(int level, uint64_t min_key, uint64_t max_key) {
     // OP_CREATE level id min_key max_key
     uint64_t id = (++cur_id);
-    (*writer) << OP_CREATE << level << id << min_key << max_key;
+    (*writer) << OP_CREATE << " " << level << " " << id << " " << min_key << " " << max_key << std::endl;
     return id;
 }
 
 // 往manifest文件中添加删除文件的记录
 void Manifest::DeleteSSTRecord(uint64_t id) {
     // OP_DEL id
-    (*writer) << OP_DELETE << id;
+    (*writer) << OP_DELETE << " " << id << std::endl;
 }

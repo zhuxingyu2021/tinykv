@@ -119,6 +119,7 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
 // Minor Compaction
 void SSTable::BuildFromMem(SkipList &sl) {
     std::ofstream sstfile(path, std::ios::out | std::ios::binary);
+    if(!sstfile){std::cerr<<"Create SSTable file failed!"<<std::endl; exit(-1);}
 
     // 1. 构造DataBlock和IndexBlock，同时往文件中写入DataBlock
     char* db = new char[option.DATA_BLOCK_SIZE];
