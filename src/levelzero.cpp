@@ -18,6 +18,7 @@ LevelZero::~LevelZero(){
     }
 };
 
+// 从Level 0中获得键key的值并返回。若键key不存在，则is_failed对应的bool变量设置为true，表示查询失败；否则设置为false，表示查询成功。
 std::string LevelZero::Get(uint64_t key, bool *is_failed) const {
     bool failed;
     std::string val;
@@ -26,12 +27,14 @@ std::string LevelZero::Get(uint64_t key, bool *is_failed) const {
         auto sst = *iter;
         if((sst->GetMinKey()<=key) && (sst->GetMaxKey()>=key)){
             val = sst->Get(key, &failed);
-            if(!failed){*is_failed=false; return val;}
+            if(!failed){if(is_failed) *is_failed=false; return val;}
         }
     }
+    if(is_failed) *is_failed=true;
     return "";
 }
 
+// 执行MinorCompaction
 void LevelZero::MinorCompaction(Utils::ImmutableMemTable& imm_mem) {
     SSTable* new_sst = new SSTable(option, option.DB_PATH + std::string("level0.sst.tmp"),
                                    tbl_cache, blk_cache);

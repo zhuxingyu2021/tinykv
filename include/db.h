@@ -7,6 +7,7 @@
 #include <cstdint>
 #include "skiplist.h"
 #include "levelzero.h"
+#include "levelnonzero.h"
 #include "cache.h"
 #include "option.h"
 #include "manifest.h"
@@ -35,6 +36,7 @@ private:
     void compaction();
 
     LevelZero* level_0;
+    std::vector<LevelNonZero*> level_n0;
 
     Cache* tbl_cache; // TableCache
     Cache* blk_cache; // BlockCache

@@ -31,6 +31,14 @@ void DB::initdb(){
         }
 
         level_0 = new LevelZero(option, *manifest, level_metadatas[0], tbl_cache, blk_cache);
+
+        auto iter = level_metadatas.begin();
+        iter++;
+        for(;iter!=level_metadatas.end();iter++){
+            auto& lvlmeta = *iter;
+            if(!lvlmeta.empty()) level_n0.push_back(new LevelNonZero(option, *manifest, lvlmeta, tbl_cache, blk_cache));
+            else level_n0.push_back(new LevelNonZero(option, *manifest, tbl_cache, blk_cache));
+        }
     }else {
         level_0 = new LevelZero(option, *manifest, tbl_cache, blk_cache);
     }
@@ -66,6 +74,7 @@ DB::~DB() {
     assert(imm_mem.sl==nullptr);
 
     delete level_0;
+    for(auto level:level_n0) delete level;
 
     delete tbl_cache; delete blk_cache;
     delete manifest;
@@ -89,7 +98,11 @@ std::string DB::Get(uint64_t key) const {
             // 3. 在Level 0中查找
             val = level_0->Get(key,&find_failed);
             if(find_failed){
-                // TODO
+                // 4. 在各个Level中查找
+                for(auto level:level_n0){
+                    val = level->Get(key,&find_failed);
+                    if(!find_failed) break;
+                }
             }
         }
     }
