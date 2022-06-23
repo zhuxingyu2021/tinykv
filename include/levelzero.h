@@ -19,6 +19,7 @@ public:
     ~LevelZero();
 
     std::string Get(uint64_t key, bool* is_failed) const;
+    const std::vector<SSTable*>& GetSSTables() const;
 
     void MinorCompaction(Utils::ImmutableMemTable& imm_mem);
 
@@ -31,6 +32,8 @@ private:
 
     Option& option;
     Manifest& _manifest;
+
+    bool empty;
 };
 
 #endif //LSMTREE_LEVELZERO_H

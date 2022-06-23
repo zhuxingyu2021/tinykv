@@ -1,10 +1,10 @@
 #include "levelzero.h"
 
 LevelZero::LevelZero(Option& op, Manifest& manifest,Cache* tablecache, Cache* blockcache): tbl_cache(tablecache),
-blk_cache(blockcache), option(op), _manifest(manifest){}
+blk_cache(blockcache), option(op), _manifest(manifest), empty(true){}
 
 LevelZero::LevelZero(Option& op, Manifest& manifest, Utils::LevelMetaDataType& levelmetadata, Cache* tablecache, Cache* blockcache):
-tbl_cache(tablecache), blk_cache(blockcache), option(op), _manifest(manifest){
+tbl_cache(tablecache), blk_cache(blockcache), option(op), _manifest(manifest), empty(false){
     for(auto sst: levelmetadata){
         auto id = sst.first;
         ssts.push_back(new SSTable(op, id, op.DB_PATH + std::to_string(id) + std::string(".sst"),
@@ -23,6 +23,7 @@ std::string LevelZero::Get(uint64_t key, bool *is_failed) const {
     bool failed;
     std::string val;
     std::shared_lock Lock(level_0_mutex);
+    if(empty){if(*is_failed) *is_failed = true; return "";} // 如果sst文件不存在
     for(auto iter=ssts.rbegin(); iter!=ssts.rend(); iter++){
         auto sst = *iter;
         if((sst->GetMinKey()<=key) && (sst->GetMaxKey()>=key)){
@@ -32,6 +33,11 @@ std::string LevelZero::Get(uint64_t key, bool *is_failed) const {
     }
     if(is_failed) *is_failed=true;
     return "";
+}
+
+// 获得当前Level的所有SSTable
+const std::vector<SSTable*>& LevelZero::GetSSTables() const {
+    return ssts;
 }
 
 // 执行MinorCompaction
@@ -52,6 +58,7 @@ void LevelZero::MinorCompaction(Utils::ImmutableMemTable& imm_mem) {
     std::unique_lock Lock1(level_0_mutex);
     std::unique_lock Lock2(imm_mem.mutex);
     ssts.push_back(new_sst);
+    empty = false;
     delete imm_mem.sl;
     imm_mem.sl = nullptr;
 }

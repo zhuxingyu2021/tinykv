@@ -3,6 +3,9 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <cassert>
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 // 构建新的SSTable
 SSTable::SSTable(Option& op, std::string&& path, Cache* tablecache, Cache* blockcache):
@@ -236,4 +239,75 @@ void SSTable::LoadIndexBlockFromBuf(char *buf, size_t bufsz, std::map<uint64_t, 
                                                         *((size_t*)(buf+offset+sizeof(uint64_t)+sizeof(size_t))));
         offset += entrysize_ib;
     }while(offset<bufsz);
+}
+
+IterableSSTable::IterableSSTable(const SSTable &sst, const Option& option):MAX_BUF_SZ(option.BUFFER_SIZE){
+    reader = new std::ifstream(sst.GetPath(), std::ios::in | std::ios::binary);
+    if(!reader->good()){std::cerr << "SSTable " << sst.GetPath() << " can't find!" << std::endl; exit(1);}
+
+    ib_pos = sst.GetIndexBlockPosition();
+    buf = nullptr;
+}
+
+IterableSSTable::~IterableSSTable() {
+    reader->close();
+    delete reader;
+    delete[] buf;
+}
+
+// 根据当前迭代器的位置，把文件内容加载到缓冲区
+#define LOAD_BUFFER(pos) _it->reader->seekg((pos));\
+    _it->buf_sz = MIN(_it->MAX_BUF_SZ, _it->ib_pos - (pos));\
+    delete[] _it->buf;\
+    _it->buf = new char[_it->buf_sz];\
+    _it->reader->read(_it->buf, _it->buf_sz);\
+    _it->buf_pos = (pos);
+
+IterableSSTable::Iterator::Iterator(IterableSSTable *it, size_t pos) {
+    _it = it;
+    file_pos = pos;
+
+    // 当前迭代器位置不在buffer的范围内
+    if((!_it->buf) || (file_pos < _it->buf_pos) || (file_pos >= _it->buf_pos + _it->buf_sz)) {
+        LOAD_BUFFER(file_pos);
+    }
+    offset = file_pos - _it->buf_pos;
+}
+
+IterableSSTable::Iterator& IterableSSTable::Iterator::operator++() {
+    // DataBlock Entry第一项：entry大小 (size_t)
+
+    // 跳到下一个Entry
+    file_pos += *((size_t*)(_it->buf + offset));
+    offset += *((size_t*)(_it->buf + offset));
+
+    // 重新加载buffer
+    if(file_pos < _it->ib_pos) {
+        size_t entrysize;
+        if (_it->buf_sz - offset <= sizeof(size_t)) {
+            LOAD_BUFFER(file_pos);
+            offset = 0;
+        }
+        entrysize = *((size_t*)(_it->buf + offset));
+        if (_it->buf_sz - offset <= entrysize) {
+            LOAD_BUFFER(file_pos);
+            offset = 0;
+        }
+    }
+    return *this;
+}
+
+std::pair<uint64_t, std::string> IterableSSTable::Iterator::operator*() const {
+    // DataBlock Entry第一项：entry大小 (size_t)
+    // DataBlock Entry第二项：key (uint64_t)
+    // DataBlock Entry第三项：value (std::string)
+
+    if(file_pos < _it->ib_pos) {
+        size_t entrysize = *((size_t*)(_it->buf + offset));
+        uint64_t key = *((uint64_t*)(_it->buf + offset + sizeof(size_t)));
+        auto str_sz = entrysize - sizeof(size_t) - sizeof(uint64_t);
+        return std::make_pair(key, std::string(_it->buf + offset + sizeof(size_t) + sizeof(uint64_t), str_sz));
+    }else{
+        return std::make_pair(0, "");
+    }
 }

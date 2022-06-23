@@ -33,11 +33,12 @@ void DB::initdb(){
         level_0 = new LevelZero(option, *manifest, level_metadatas[0], tbl_cache, blk_cache);
 
         auto iter = level_metadatas.begin();
+        auto level = 1;
         iter++;
-        for(;iter!=level_metadatas.end();iter++){
+        for(;iter!=level_metadatas.end();iter++, level++){
             auto& lvlmeta = *iter;
-            if(!lvlmeta.empty()) level_n0.push_back(new LevelNonZero(option, *manifest, lvlmeta, tbl_cache, blk_cache));
-            else level_n0.push_back(new LevelNonZero(option, *manifest, tbl_cache, blk_cache));
+            if(!lvlmeta.empty()) level_n0.push_back(new LevelNonZero(option, *manifest, level, lvlmeta, tbl_cache, blk_cache));
+            else level_n0.push_back(new LevelNonZero(option, *manifest, level, tbl_cache, blk_cache));
         }
     }else {
         level_0 = new LevelZero(option, *manifest, tbl_cache, blk_cache);
