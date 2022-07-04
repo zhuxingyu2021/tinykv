@@ -1,10 +1,11 @@
 #include "levelzero.h"
+#include <cstdio>
 
-LevelZero::LevelZero(Option& op, Manifest& manifest,Cache* tablecache, Cache* blockcache): tbl_cache(tablecache),
+LevelZero::LevelZero(Option& op, Manifest& manifest,Cache* tablecache, Cache* blockcache): Level(), tbl_cache(tablecache),
 blk_cache(blockcache), option(op), _manifest(manifest), empty(true){}
 
 LevelZero::LevelZero(Option& op, Manifest& manifest, Utils::LevelMetaDataType& levelmetadata, Cache* tablecache, Cache* blockcache):
-tbl_cache(tablecache), blk_cache(blockcache), option(op), _manifest(manifest), empty(false){
+Level(), tbl_cache(tablecache), blk_cache(blockcache), option(op), _manifest(manifest), empty(false){
     for(auto sst: levelmetadata){
         auto id = sst.first;
         ssts.push_back(new SSTable(op, id, op.DB_PATH + std::to_string(id) + std::string(".sst"),
@@ -22,7 +23,7 @@ LevelZero::~LevelZero(){
 std::string LevelZero::Get(uint64_t key, bool *is_failed) const {
     bool failed;
     std::string val;
-    std::shared_lock Lock(level_0_mutex);
+    std::shared_lock Lock(level_mutex);
     if(empty){if(*is_failed) *is_failed = true; return "";} // 如果sst文件不存在
     for(auto iter=ssts.rbegin(); iter!=ssts.rend(); iter++){
         auto sst = *iter;
@@ -40,6 +41,22 @@ const std::vector<SSTable*>& LevelZero::GetSSTables() const {
     return ssts;
 }
 
+// 清空当前Level
+void LevelZero::Clear() {
+    for(auto sst:ssts){
+        // 删除相关cache
+        tbl_cache->Evict(sst->GetID());
+        blk_cache->Evict(sst->GetID());
+
+        // 删除SSTable文件
+        remove(sst->GetPath().c_str());
+
+        delete sst;
+    }
+    ssts.clear();
+}
+
+
 // 执行MinorCompaction
 void LevelZero::MinorCompaction(Utils::ImmutableMemTable& imm_mem) {
     SSTable* new_sst = new SSTable(option, option.DB_PATH + std::string("level0.sst.tmp"),
@@ -55,7 +72,7 @@ void LevelZero::MinorCompaction(Utils::ImmutableMemTable& imm_mem) {
 
     // 3. 重命名文件，并将文件加入到SSTable列表中，删除Immutable MemTable
     new_sst->Rename(newid, option.DB_PATH + std::to_string(newid) + ".sst");
-    std::unique_lock Lock1(level_0_mutex);
+    std::unique_lock Lock1(level_mutex);
     std::unique_lock Lock2(imm_mem.mutex);
     ssts.push_back(new_sst);
     empty = false;

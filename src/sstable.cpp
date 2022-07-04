@@ -9,11 +9,12 @@
 
 // 构建新的SSTable
 SSTable::SSTable(Option& op, std::string&& path, Cache* tablecache, Cache* blockcache):
-path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op){}
+path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op),writer(nullptr),buf_ib(nullptr),buf_db(nullptr){}
 
 // 从文件构造SSTable
 SSTable::SSTable(Option &op, uint64_t id, std::string &&path, Cache *tablecache, Cache *blockcache, uint64_t minkey, uint64_t maxkey):
-tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op), min_key(minkey), max_key(maxkey){
+tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op), min_key(minkey), max_key(maxkey),writer(
+        nullptr),buf_db(nullptr),buf_ib(nullptr){
     std::ifstream reader(path, std::ios::in | std::ios::binary);
     if(reader.good()){ // 从文件中读取footer信息
         reader.seekg(-FOOTER_SIZE, std::ios::end);
@@ -121,93 +122,117 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
 
 // Minor Compaction
 void SSTable::BuildFromMem(SkipList &sl) {
-    std::ofstream sstfile(path, std::ios::out | std::ios::binary);
-    if(!sstfile){std::cerr<<"Create SSTable file failed!"<<std::endl; exit(-1);}
+    CreateSSTFile();
 
     // 1. 构造DataBlock和IndexBlock，同时往文件中写入DataBlock
-    char* db = new char[option.DATA_BLOCK_SIZE];
-    int offset_db = 0;
-    int dbcount = 0;
-
-    size_t buffersz = option.BUFFER_SIZE;
-    char* buffer_ib = new char[buffersz];
-    int offset_ib = 0;
-    int max_db_key; // IndexBlock的索引
-    size_t pos_db = sstfile.tellp();
     size_t entrysize_ib = sizeof(uint64_t) + 2*sizeof(size_t);
 
-    auto firstkv = *(sl.begin());
-    min_key = firstkv.first;
-
     for(auto kv:sl){
-        size_t lenval = kv.second.length();
-        size_t entrysize_db = lenval * sizeof(char) + sizeof(size_t) + sizeof(uint64_t);
-        if(offset_db + entrysize_db > option.DATA_BLOCK_SIZE){ // 当前DataBlock已满
-            sstfile.write(db, offset_db);
-            offset_db = 0;
-            dbcount++;
-            size_t nowpos = sstfile.tellp();
-
-            if(offset_ib + entrysize_ib > buffersz){
-                char* new_buffer = new char[buffersz*2];
-                memcpy(new_buffer, buffer_ib, offset_ib);
-                buffersz *= 2;
-                delete[] buffer_ib;
-                buffer_ib = new_buffer;
-            }
-            *((uint64_t*)(buffer_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
-            offset_ib += sizeof(uint64_t);
-            *((size_t*)(buffer_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
-            offset_ib += sizeof(size_t);
-            *((size_t*)(buffer_ib + offset_ib)) = nowpos - pos_db; // IndexBlock Entry第三项：DataBlock长度
-            offset_ib += sizeof(size_t);
-
-            pos_db = nowpos;
-        }
-        max_db_key = kv.first;
-        *((size_t*)(db + offset_db)) = entrysize_db; //DataBlock Entry第一项：entry大小
-        offset_db += sizeof(size_t);
-        *((uint64_t*)(db + offset_db)) = max_db_key; //DataBlock Entry第二项：key
-        offset_db += sizeof(uint64_t);
-        memcpy(db + offset_db, kv.second.c_str(), lenval); //DataBlock Entry第三项：value
-        offset_db += lenval;
+        WriteDataBlock(kv.first, kv.second);
     }
-    if(offset_db > 0){
-        sstfile.write(db, offset_db);
-        offset_db = 0;
-        dbcount++;
-        size_t nowpos = sstfile.tellp();
 
-        if(offset_ib + entrysize_ib > buffersz){
-            char* new_buffer = new char[buffersz*2];
-            memcpy(new_buffer, buffer_ib, offset_ib);
-            buffersz *= 2;
-            delete[] buffer_ib;
-            buffer_ib = new_buffer;
+    WriteMetaData();
+}
+
+// 创建新的SSTable
+void SSTable::CreateSSTFile() {
+    if(writer){std::cerr<<"SSTable already created!"<<std::endl; exit(-1);}
+    writer = new std::ofstream(path, std::ios::out | std::ios::binary);
+    if(!(*writer)){std::cerr<<"Create SSTable file failed!"<<std::endl; exit(-1);}
+}
+
+// 将(key, value)写入DataBlock
+void SSTable::WriteDataBlock(uint64_t key, const std::string &value) {
+    if(!buf_db) buf_db = new char[option.DATA_BLOCK_SIZE];
+    if(!buf_ib) {
+        buf_ib_sz = option.BUFFER_SIZE;
+        buf_ib = new char[buf_ib_sz];
+    }
+
+    size_t entrysize_ib = sizeof(uint64_t) + 2*sizeof(size_t);
+    if(first_write){
+        min_key = key;
+        first_write = false;
+    }
+
+    size_t lenval = value.length();
+    size_t entrysize_db = lenval * sizeof(char) + sizeof(size_t) + sizeof(uint64_t);
+    if(offset_db + entrysize_db > option.DATA_BLOCK_SIZE){ // 当前DataBlock已满
+        writer->write(buf_db, offset_db);
+        offset_db = 0;
+        size_t nowpos = writer->tellp();
+
+        if(offset_ib + entrysize_ib > buf_ib_sz){
+            char* new_buffer = new char[buf_ib_sz*2];
+            memcpy(new_buffer, buf_ib, offset_ib);
+            buf_ib_sz *= 2;
+            delete[] buf_ib;
+            buf_ib = new_buffer;
         }
-        *((uint64_t*)(buffer_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
+        *((uint64_t*)(buf_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
         offset_ib += sizeof(uint64_t);
-        *((size_t*)(buffer_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
+        *((size_t*)(buf_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
         offset_ib += sizeof(size_t);
-        *((size_t*)(buffer_ib + offset_ib)) = nowpos - pos_db; // IndexBlock Entry第三项：DataBlock长度
+        *((size_t*)(buf_ib + offset_ib)) = nowpos - pos_db; // IndexBlock Entry第三项：DataBlock长度
         offset_ib += sizeof(size_t);
 
         pos_db = nowpos;
-        max_key = max_db_key;
     }
+    max_db_key = key;
+    *((size_t*)(buf_db + offset_db)) = entrysize_db; //DataBlock Entry第一项：entry大小
+    offset_db += sizeof(size_t);
+    *((uint64_t*)(buf_db + offset_db)) = max_db_key; //DataBlock Entry第二项：key
+    offset_db += sizeof(uint64_t);
+    memcpy(buf_db + offset_db, value.c_str(), lenval); //DataBlock Entry第三项：value
+    offset_db += lenval;
+}
 
-    // 2. 向文件中写入IndexBlock
+// 将IndexBlock写入文件并写入footer信息
+void SSTable::WriteMetaData() {
+    size_t entrysize_ib = sizeof(uint64_t) + 2*sizeof(size_t);
+
+    // 将缓冲区中的DataBlock写入文件
+    if(offset_db > 0){
+        writer->write(buf_db, offset_db);
+        size_t nowpos = writer->tellp();
+
+        if(offset_ib + entrysize_ib > buf_ib_sz){
+            char* new_buffer = new char[buf_ib_sz*2];
+            memcpy(new_buffer, buf_ib, offset_ib);
+            buf_ib_sz *= 2;
+            delete[] buf_ib;
+            buf_ib = new_buffer;
+        }
+        *((uint64_t*)(buf_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
+        offset_ib += sizeof(uint64_t);
+        *((size_t*)(buf_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
+        offset_ib += sizeof(size_t);
+        *((size_t*)(buf_ib + offset_ib)) = nowpos - pos_db; // IndexBlock Entry第三项：DataBlock长度
+        offset_ib += sizeof(size_t);
+
+        pos_db = nowpos;
+    }
+    max_key = max_db_key;
+
+    // 向文件中写入IndexBlock
     ib_pos = pos_db; // IndexBlock的起始位置
     ib_sz = offset_ib; // IndexBlock的大小
-    sstfile.write(buffer_ib, offset_ib);
+    writer->write(buf_ib, offset_ib);
 
-    // 3. 写入footer信息
-    sstfile.write((char*)&ib_pos, sizeof(size_t));
-    sstfile.write((char*)&ib_sz, sizeof(size_t));
+    // 写入footer信息
+    writer->write((char*)&ib_pos, sizeof(size_t));
+    writer->write((char*)&ib_sz, sizeof(size_t));
 
-    delete[] db;
-    delete[] buffer_ib;
-    sstfile.close();
+    delete[] buf_db;
+    delete[] buf_ib;
+    writer->close();
+    delete writer;
+
+    buf_db = nullptr; buf_ib = nullptr;
+    offset_db = 0;
+    offset_ib = 0;
+    pos_db = 0;
+    first_write = true;
 }
 
 // 重命名SSTable文件
@@ -241,12 +266,16 @@ void SSTable::LoadIndexBlockFromBuf(char *buf, size_t bufsz, std::map<uint64_t, 
     }while(offset<bufsz);
 }
 
-IterableSSTable::IterableSSTable(const SSTable &sst, const Option& option):MAX_BUF_SZ(option.BUFFER_SIZE){
+IterableSSTable::IterableSSTable(const SSTable &sst, const Option& option){
+    MAX_BUF_SZ = option.BUFFER_SIZE;
+
     reader = new std::ifstream(sst.GetPath(), std::ios::in | std::ios::binary);
     if(!reader->good()){std::cerr << "SSTable " << sst.GetPath() << " can't find!" << std::endl; exit(1);}
 
     ib_pos = sst.GetIndexBlockPosition();
     buf = nullptr;
+
+    default_iterator.init(this, 0);
 }
 
 IterableSSTable::~IterableSSTable() {
@@ -263,7 +292,11 @@ IterableSSTable::~IterableSSTable() {
     _it->reader->read(_it->buf, _it->buf_sz);\
     _it->buf_pos = (pos);
 
-IterableSSTable::Iterator::Iterator(IterableSSTable *it, size_t pos) {
+IterableSSTable::Iterator::Iterator(IterableSSTable *it, size_t pos){
+    init(it, pos);
+}
+
+void IterableSSTable::Iterator::init(IterableSSTable *it, size_t pos) {
     _it = it;
     file_pos = pos;
 

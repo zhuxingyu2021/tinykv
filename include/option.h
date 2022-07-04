@@ -16,6 +16,8 @@ struct Option{
     size_t BLOCKCACHE_SIZE=1024*1024*16;
     size_t TABLECACHE_SIZE=1024*1024;
 
+    size_t FILE_SPLIT_SIZE=1024*1024*6;
+
     bool BLOCKCACHE_ENABLED=true;
     bool TABLECHCHE_ENABLED=true;
 

@@ -1,23 +1,29 @@
 #ifndef LSMTREE_LEVELNONZERO_H
 #define LSMTREE_LEVELNONZERO_H
 
-#include "levelzero.h"
+#include "level.h"
+#include "skiplist.h"
 
-class LevelNonZero{
+#include "option.h"
+#include "utils.h"
+#include "manifest.h"
+
+class LevelNonZero:public Level{
 public:
     LevelNonZero(Option& op, Manifest& manifest, int level, Cache* tablecache, Cache* blockcache);
     LevelNonZero(Option& op, Manifest& manifest, int level, Utils::LevelMetaDataType& levelmetadata, Cache* tablecache, Cache* blockcache);
 
     ~LevelNonZero();
 
-    std::string Get(uint64_t key, bool* is_failed) const;
+    virtual std::string Get(uint64_t key, bool* is_failed) const;
+    virtual int GetLevel() const{return _level;}
 
-    const std::vector<SSTable*>& GetSSTables() const;
+    virtual const std::vector<SSTable*>& GetSSTables() const;
 
-    void MajorCompaction(LevelZero& last_level);
-    void MajorCompaction(LevelNonZero& last_level);
+    virtual void Clear();
 
-    mutable std::shared_mutex level_mutex;
+    void MajorCompaction(Level& last_level);
+
 private:
     std::vector<SSTable*> ssts;
     bool empty;

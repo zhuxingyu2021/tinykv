@@ -1,29 +1,28 @@
 #ifndef LSMTREE_LEVELZERO_H
 #define LSMTREE_LEVELZERO_H
 
-#include <mutex>
-#include <shared_mutex>
-#include "sstable.h"
+#include "level.h"
 #include "skiplist.h"
-#include <vector>
 
 #include "option.h"
 #include "utils.h"
 #include "manifest.h"
 
-class LevelZero{
+class LevelZero:public Level{
 public:
     LevelZero(Option& op, Manifest& manifest, Cache* tablecache, Cache* blockcache);
     LevelZero(Option& op, Manifest& manifest, Utils::LevelMetaDataType& levelmetadata, Cache* tablecache, Cache* blockcache);
 
     ~LevelZero();
 
-    std::string Get(uint64_t key, bool* is_failed) const;
-    const std::vector<SSTable*>& GetSSTables() const;
+    virtual std::string Get(uint64_t key, bool* is_failed) const;
+    virtual int GetLevel() const{return 0;}
+
+    virtual const std::vector<SSTable*>& GetSSTables() const;
+    virtual void Clear();
 
     void MinorCompaction(Utils::ImmutableMemTable& imm_mem);
 
-    mutable std::shared_mutex level_0_mutex;
 private:
     std::vector<SSTable*> ssts;
 
