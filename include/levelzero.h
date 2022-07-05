@@ -21,6 +21,14 @@ public:
     virtual const std::vector<SSTable*>& GetSSTables() const;
     virtual void Clear();
 
+    size_t Space(){
+        size_t size = 0;
+        for(auto sst:ssts){
+            size += sst->GetFileSize();
+        }
+        return size;
+    }
+
     void MinorCompaction(Utils::ImmutableMemTable& imm_mem);
 
 private:

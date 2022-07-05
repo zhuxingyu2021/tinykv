@@ -47,7 +47,7 @@ Manifest::Manifest(Option &op): option(op){
             cur_id = entry.first;
 
             // OP_CREATE level id min_key max_key
-            (*writer) << OP_CREATE <<" " << entry.second.level << " " << cur_id << " " <<
+            (*writer) << std::to_string(OP_CREATE) <<" " << entry.second.level << " " << cur_id << " " <<
                 entry.second.min_key << " " << entry.second.max_key << std::endl;
         }
     }else {
@@ -69,12 +69,12 @@ Manifest::RecordType &Manifest::GetRecord() {
 uint64_t Manifest::CreateSSTRecord(int level, uint64_t min_key, uint64_t max_key) {
     // OP_CREATE level id min_key max_key
     uint64_t id = (++cur_id);
-    (*writer) << OP_CREATE << " " << level << " " << id << " " << min_key << " " << max_key << std::endl;
+    (*writer) << std::to_string(OP_CREATE) << " " << level << " " << id << " " << min_key << " " << max_key << std::endl;
     return id;
 }
 
 // 往manifest文件中添加删除文件的记录
 void Manifest::DeleteSSTRecord(uint64_t id) {
     // OP_DEL id
-    (*writer) << OP_DELETE << " " << id << std::endl;
+    (*writer) << std::to_string(OP_DELETE) << " " << id << std::endl;
 }

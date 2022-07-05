@@ -75,7 +75,7 @@ struct priority_queue_type{
 };
 
 // MajorCompaction
-void LevelNonZero::MajorCompaction(Level &last_level) {
+void LevelNonZero::MajorCompaction(Level *last_level) {
     std::vector<SSTable*> new_ssts;
     int cur_sst_id = 0;
     SSTable *cur_sst = new SSTable(option, option.DB_PATH + std::string("level") + std::to_string(_level)+
@@ -83,7 +83,7 @@ void LevelNonZero::MajorCompaction(Level &last_level) {
     cur_sst->CreateSSTFile();
     new_ssts.push_back(cur_sst);
 
-    const std::vector<SSTable*>& last_level_ssts = last_level.GetSSTables();
+    const std::vector<SSTable*>& last_level_ssts = last_level->GetSSTables();
     std::vector<IterableSSTable*> last_level_issts;
     last_level_issts.reserve(last_level_ssts.size());
     std::vector<IterableSSTable*> this_level_issts;
@@ -100,14 +100,14 @@ void LevelNonZero::MajorCompaction(Level &last_level) {
         IterableSSTable* isst = new IterableSSTable(*sst, option);
         last_level_issts.push_back(isst);
 
-        heap.push(priority_queue_type(*(isst->default_iterator), isst, last_level.GetLevel(), sst->GetID()));
+        heap.push(priority_queue_type(*(isst->default_iterator), isst, last_level->GetLevel(), sst->GetID()));
         ++isst->default_iterator;
     }
     for(auto sst:ssts){
         IterableSSTable* isst = new IterableSSTable(*sst, option);
         this_level_issts.push_back(isst);
 
-        heap.push(priority_queue_type(*(isst->default_iterator), isst, last_level.GetLevel(), sst->GetID()));
+        heap.push(priority_queue_type(*(isst->default_iterator), isst, last_level->GetLevel(), sst->GetID()));
         ++isst->default_iterator;
     }
     while(!heap.empty()){
@@ -132,8 +132,6 @@ void LevelNonZero::MajorCompaction(Level &last_level) {
                 // 把最新的元素更新到文件
                 cur_sst->WriteDataBlock(heap.top().kv.first, heap.top().kv.second);
                 if(cur_sst->WritenSize()>=option.FILE_SPLIT_SIZE){ // SSTable超出文件大小上限，则创建新SSTable
-                    cur_sst->WriteMetaData();
-
                     cur_sst_id++;
                     cur_sst = new SSTable(option, option.DB_PATH + std::string("level") + std::to_string(_level)+
                                                   std::string(".sst.tmp.") + std::to_string(cur_sst_id),tbl_cache, blk_cache);
@@ -163,14 +161,15 @@ void LevelNonZero::MajorCompaction(Level &last_level) {
         _manifest.DeleteSSTRecord(sst->GetID());
     }
     for(auto sst:new_ssts){
+        sst->WriteMetaData();
         sst_ids.push_back(_manifest.CreateSSTRecord(_level,sst->GetMinKey(), sst->GetMaxKey()));
     }
 
     std::unique_lock Lock1(level_mutex);
-    std::unique_lock Lock2(last_level.level_mutex);
+    std::unique_lock Lock2(last_level->level_mutex);
     // 删除本Level和上个Level的SSTable
     Clear();
-    last_level.Clear();
+    last_level->Clear();
     // 添加新的SSTable
     for(int i=0; i<new_ssts.size();i++){
         new_ssts[i]->Rename(sst_ids[i], option.DB_PATH + std::to_string(sst_ids[i]) + ".sst");

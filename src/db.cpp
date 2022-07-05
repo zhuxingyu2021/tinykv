@@ -50,7 +50,7 @@ DB::DB():compaction_thread(nullptr), compaction_thread_scheduled(false) {
     initdb();
 }
 
-DB::DB(Option& op):compaction_thread(nullptr), compaction_thread_scheduled(false){
+DB::DB(Option& op):compaction_thread(nullptr), compaction_thread_scheduled(false) {
     imm_mem.sl = nullptr;
     option = op;
     initdb();
@@ -61,6 +61,8 @@ DB::~DB() {
         if(compaction_thread->joinable()) compaction_thread->join();
     }
     assert(imm_mem.sl==nullptr);
+
+    option.MAJOR_COMPACTION_ENABLED= false;
 
     // 将MemTable数据写入磁盘
     if(mem->Size()>0){
@@ -147,6 +149,22 @@ void DB::compaction() {
     compaction_thread_scheduled = true;
     if(imm_mem.sl){
         level_0->MinorCompaction(imm_mem);
+    }
+    if(option.MAJOR_COMPACTION_ENABLED){
+        if(level_0->Space()>=option.MAX_LEVEL_0_SIZE || level_0->GetSSTables().size()>=option.MAX_LEVEL_0_FILES){
+            if(level_n0.empty()){
+                level_n0.push_back(new LevelNonZero(option, *manifest, 1, tbl_cache, blk_cache));
+            }
+            level_n0[0]->MajorCompaction((Level*)level_0);
+        }
+        for(int i=1;i<level_n0.size()&&i<option.MAX_LEVEL-1;i++){
+            if(level_n0[i]->Space()>=((option.MAX_LEVEL_0_SIZE)<<i)){
+                if(i+1>=level_n0.size()) {
+                    level_n0.push_back(new LevelNonZero(option, *manifest, 1, tbl_cache, blk_cache));
+                }
+                level_n0[i+1]->MajorCompaction((Level*)level_n0[i]);
+            }
+        }
     }
     compaction_thread_scheduled = false;
 }

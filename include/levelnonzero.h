@@ -22,7 +22,15 @@ public:
 
     virtual void Clear();
 
-    void MajorCompaction(Level& last_level);
+    void MajorCompaction(Level* last_level);
+
+    size_t Space(){
+        size_t size = 0;
+        for(auto sst:ssts){
+            size += sst->GetFileSize();
+        }
+        return size;
+    }
 
 private:
     std::vector<SSTable*> ssts;

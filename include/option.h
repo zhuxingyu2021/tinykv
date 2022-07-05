@@ -9,17 +9,22 @@ struct Option{
 
     int MAX_LEVEL=8;
 
-    size_t MAX_MEMTABLE_SIZE=1024*1024*2;
+    size_t MAX_MEMTABLE_SIZE=1024*1024;
 
     size_t DATA_BLOCK_SIZE=4096;
     size_t BUFFER_SIZE=4096;
     size_t BLOCKCACHE_SIZE=1024*1024*16;
-    size_t TABLECACHE_SIZE=1024*1024;
+    size_t TABLECACHE_SIZE=1024*512;
 
     size_t FILE_SPLIT_SIZE=1024*1024*6;
 
+    int MAX_LEVEL_0_FILES=3;
+    size_t MAX_LEVEL_0_SIZE=1024*1024*4;
+
     bool BLOCKCACHE_ENABLED=true;
     bool TABLECHCHE_ENABLED=true;
+
+    bool MAJOR_COMPACTION_ENABLED=true;
 
     std::string DB_PATH;
 };

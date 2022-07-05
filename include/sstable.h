@@ -38,6 +38,8 @@ public:
 
     // footer区域的大小
     static const long FOOTER_SIZE=2*sizeof(size_t);
+
+    size_t GetFileSize() const{return ib_pos+ib_sz;}
 private:
     uint64_t min_key; //最小key
     uint64_t max_key; //最大key
@@ -56,11 +58,11 @@ private:
     char* buf_db; // DataBlock的写缓冲区
     char* buf_ib; // IndexBlock的写缓冲区
     size_t buf_ib_sz; // IndexBlock写缓冲区的大小
-    int offset_db = 0; // buf_db的offset
-    int offset_ib = 0; // buf_ib的offset
+    int offset_db; // buf_db的offset
+    int offset_ib; // buf_ib的offset
     int max_db_key; // IndexBlock的索引
-    size_t pos_db = 0; // DataBlock在文件中的起始地址
-    bool first_write = true; // 是否是第一次写入
+    size_t pos_db; // DataBlock在文件中的起始地址
+    bool first_write; // 是否是第一次写入
 
 };
 

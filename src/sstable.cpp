@@ -9,12 +9,13 @@
 
 // 构建新的SSTable
 SSTable::SSTable(Option& op, std::string&& path, Cache* tablecache, Cache* blockcache):
-path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op),writer(nullptr),buf_ib(nullptr),buf_db(nullptr){}
+    path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op),writer(nullptr),buf_ib(nullptr),buf_db(nullptr),
+    ib_sz(0),ib_pos(0),first_write(true),offset_db(0),offset_ib(0),pos_db(0){}
 
 // 从文件构造SSTable
 SSTable::SSTable(Option &op, uint64_t id, std::string &&path, Cache *tablecache, Cache *blockcache, uint64_t minkey, uint64_t maxkey):
 tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op), min_key(minkey), max_key(maxkey),writer(
-        nullptr),buf_db(nullptr),buf_ib(nullptr){
+        nullptr),buf_db(nullptr),buf_ib(nullptr),ib_sz(0),ib_pos(0),first_write(true),offset_db(0),offset_ib(0),pos_db(0){
     std::ifstream reader(path, std::ios::in | std::ios::binary);
     if(reader.good()){ // 从文件中读取footer信息
         reader.seekg(-FOOTER_SIZE, std::ios::end);
@@ -124,9 +125,6 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
 void SSTable::BuildFromMem(SkipList &sl) {
     CreateSSTFile();
 
-    // 1. 构造DataBlock和IndexBlock，同时往文件中写入DataBlock
-    size_t entrysize_ib = sizeof(uint64_t) + 2*sizeof(size_t);
-
     for(auto kv:sl){
         WriteDataBlock(kv.first, kv.second);
     }
@@ -136,6 +134,12 @@ void SSTable::BuildFromMem(SkipList &sl) {
 
 // 创建新的SSTable
 void SSTable::CreateSSTFile() {
+    buf_db = nullptr; buf_ib = nullptr;
+    offset_db = 0;
+    offset_ib = 0;
+    pos_db = 0;
+    first_write = true;
+
     if(writer){std::cerr<<"SSTable already created!"<<std::endl; exit(-1);}
     writer = new std::ofstream(path, std::ios::out | std::ios::binary);
     if(!(*writer)){std::cerr<<"Create SSTable file failed!"<<std::endl; exit(-1);}
