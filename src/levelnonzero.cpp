@@ -3,11 +3,11 @@
 # include <stack>
 
 LevelNonZero::LevelNonZero(Option &op, Manifest &manifest, int level, Cache *tablecache, Cache *blockcache): Level(),
-    option(op),_manifest(manifest), tbl_cache(tablecache), blk_cache(blockcache), _level(level), empty(true){}
+    option(op),_manifest(manifest), tbl_cache(tablecache), blk_cache(blockcache), _level(level){}
 
 LevelNonZero::LevelNonZero(Option &op, Manifest &manifest, int level, Utils::LevelMetaDataType &levelmetadata, Cache *tablecache,
                            Cache *blockcache): Level(), option(op), _manifest(manifest), tbl_cache(tablecache),blk_cache(blockcache),
-                           _level(level),empty(false){
+                           _level(level){
     for(auto sst: levelmetadata){
         auto id = sst.first;
         ssts.push_back(new SSTable(op, id, op.DB_PATH + std::to_string(id) + std::string(".sst"),
@@ -26,7 +26,7 @@ std::string LevelNonZero::Get(uint64_t key, bool *is_failed) const {
     bool failed;
     std::string val;
     std::shared_lock Lock(level_mutex);
-    if(empty){if(*is_failed) *is_failed = true; return "";} // 如果sst文件不存在
+
     for(auto iter=ssts.begin(); iter!=ssts.end(); iter++){
         auto sst = *iter;
         if((sst->GetMinKey()<=key) && (sst->GetMaxKey()>=key)){
@@ -122,15 +122,13 @@ void LevelNonZero::MajorCompaction(Level *last_level) {
                 // 合并重复的键值对
                 int newest = 0;
                 // 找最新的元素
-                for(int i=1; i<tmp.size(); i++){
-                    if(tmp[i].level<=tmp[newest].level){
-                        if(tmp[i].id>tmp[newest].id){
+                for(int i=1; i<tmp.size(); i++)
+                    if(tmp[i].level<=tmp[newest].level)
+                        if(tmp[i].id>tmp[newest].id)
                             newest=i;
-                        }
-                    }
-                }
+
                 // 把最新的元素更新到文件
-                cur_sst->WriteDataBlock(heap.top().kv.first, heap.top().kv.second);
+                cur_sst->WriteDataBlock(tmp[newest].kv.first, tmp[newest].kv.second);
                 if(cur_sst->WritenSize()>=option.FILE_SPLIT_SIZE){ // SSTable超出文件大小上限，则创建新SSTable
                     cur_sst_id++;
                     cur_sst = new SSTable(option, option.DB_PATH + std::string("level") + std::to_string(_level)+
@@ -144,11 +142,22 @@ void LevelNonZero::MajorCompaction(Level *last_level) {
         }
 
         // 将下一个元素放入优先级队列中
-        auto isst = heap.top().isst;
+        auto &isst = t.isst;
         if(!isst->default_iterator.isEnd()){
-            heap.push(priority_queue_type(*(isst->default_iterator), isst, heap.top().level, heap.top().id));
+            heap.push(priority_queue_type(*(isst->default_iterator), isst, t.level, t.id));
             ++isst->default_iterator;
         }
+    }
+
+    // 处理最后一个元素
+    {
+        int newest = 0;
+        for(int i=1; i<tmp.size(); i++)
+            if(tmp[i].level<=tmp[newest].level)
+                if(tmp[i].id>tmp[newest].id)
+                    newest=i;
+
+        cur_sst->WriteDataBlock(tmp[newest].kv.first, tmp[newest].kv.second);
     }
 
     // 添加删除本层和上层sst的Record到manifest文件，添加新的Record到manifest文件，并获得文件id

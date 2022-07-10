@@ -39,8 +39,6 @@ private:
 
     Option& option;
     Manifest& _manifest;
-
-    bool empty;
 };
 
 #endif //LSMTREE_LEVELZERO_H

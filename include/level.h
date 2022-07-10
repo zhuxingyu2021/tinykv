@@ -7,12 +7,18 @@
 #include <vector>
 #include <string>
 
+#include <iostream>
+
 class Level{
 public:
-    virtual std::string Get(uint64_t key, bool* is_failed) const {}
-    virtual int GetLevel() {}
-    virtual const std::vector<SSTable*>& GetSSTables() const {}
-    virtual void Clear() {}
+    virtual std::string Get(uint64_t key, bool* is_failed) const {std::cerr << "Error!" << std::endl;
+        exit(-1);}
+    virtual int GetLevel() const{std::cerr << "Error!" << std::endl;
+        exit(-1);}
+    virtual const std::vector<SSTable*>& GetSSTables() const {std::cerr << "Error!" << std::endl;
+        exit(-1);}
+    virtual void Clear() {std::cerr << "Error!" << std::endl;
+        exit(-1);}
 
     mutable std::shared_mutex level_mutex;
 };

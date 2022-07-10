@@ -2,11 +2,11 @@
 #include <iostream>
 #include <map>
 #include <random>
+#include <cassert>
 
-#define INSERT_COUNT 10000000
+#define EXPECT(expr) if(!(expr)){std::cout<<"Expectation failed: "<<#expr<<std::endl;exit(-1);}
 
-#define ASSERT_RELEASE(expr) \
-if(!(expr)){std::cout << "Assert Failed! In source file"<< __FILE__ << ",line " << __LINE__ << std::endl;exit(-1);}
+#define INSERT_COUNT 20000000
 
 using namespace std;
 
@@ -34,7 +34,7 @@ string strRand(int length) {			// length: 产生字符串的长度
 
 int main()
 {
-    std::map<int,std::string> m;
+    std::map<uint64_t ,std::string> m;
 
     Option default_option;
 
@@ -46,7 +46,7 @@ int main()
     exit(-1);
 #endif
 
-    DB db(default_option);
+    DB db;
     random_device rd;
     default_random_engine random(rd());
 
@@ -57,23 +57,22 @@ int main()
         m[key] = val;
     }
 
-    for(int i=0;i<INSERT_COUNT;i++){
-        auto key = random();
-        auto dbval = db.Get(key);
-        auto miter = m.find(key);
-        if(miter!=m.end()){
-            auto mval = miter->second;
-            ASSERT_RELEASE(dbval==mval);
-            db.Del(key);
-            m.erase(miter);
-        }else{
-            ASSERT_RELEASE(dbval.length()==0);
-        }
+    for(auto kv:m){
+        // 测试Get
+        auto val = db.Get(kv.first);
+        EXPECT(val == kv.second);
 
-        if(i%100000==0){
-            std::cout << "Tested: " << (i*100.0)/INSERT_COUNT << "% OK!" << std::endl;
-        }
+        db.Del(kv.first);
     }
+    std::cout << "Test Get Success!" << std::endl;
+
+    for(auto kv:m){
+        // 测试Del
+        auto val = db.Get(kv.first);
+        assert(val == "");
+    }
+
+    std::cout << "Test Delete Success!" << std::endl;
     return 0;
 }
 

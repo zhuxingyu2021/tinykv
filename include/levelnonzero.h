@@ -34,7 +34,6 @@ public:
 
 private:
     std::vector<SSTable*> ssts;
-    bool empty;
 
     Cache* tbl_cache; // TableCache
     Cache* blk_cache; // BlockCache
