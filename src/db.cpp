@@ -30,18 +30,12 @@ void DB::initdb(){
             level_metadatas[level][entry.first] = std::make_pair(entry.second.min_key, entry.second.max_key);
         }
 
-        level_0 = new LevelZero(option, *manifest, level_metadatas[0], tbl_cache, blk_cache);
-
-        auto iter = level_metadatas.begin();
-        auto level = 1;
-        iter++;
-        for(;iter!=level_metadatas.end();iter++, level++){
+        auto level=0;
+        for(auto iter = level_metadatas.begin();iter!=level_metadatas.end();iter++, level++){
             auto& lvlmeta = *iter;
-            if(!lvlmeta.empty()) level_n0.push_back(new LevelNonZero(option, *manifest, level, lvlmeta, tbl_cache, blk_cache));
-            else level_n0.push_back(new LevelNonZero(option, *manifest, level, tbl_cache, blk_cache));
+            if(!lvlmeta.empty()) levels.push_back(new Level(option, *manifest, level, lvlmeta, tbl_cache, blk_cache));
+            else levels.push_back(new Level(option, *manifest, level, tbl_cache, blk_cache));
         }
-    }else {
-        level_0 = new LevelZero(option, *manifest, tbl_cache, blk_cache);
     }
 }
 
@@ -74,8 +68,7 @@ DB::~DB() {
     }
     assert(imm_mem.sl==nullptr);
 
-    delete level_0;
-    for(auto level:level_n0) delete level;
+    for(auto level:levels) delete level;
 
     delete tbl_cache; delete blk_cache;
     delete manifest;
@@ -96,14 +89,10 @@ std::string DB::Get(uint64_t key) const {
         Lock.unlock();
 
         if(find_failed){
-            // 3. 在Level 0中查找
-            val = level_0->Get(key,&find_failed);
-            if(find_failed){
-                // 4. 在各个Level中查找
-                for(auto level:level_n0){
-                    val = level->Get(key,&find_failed);
-                    if(!find_failed) break;
-                }
+            // 3. 在各个Level中查找
+            for(auto level:levels){
+                val = level->Get(key,&find_failed);
+                if(!find_failed) break;
             }
         }
     }
@@ -144,22 +133,17 @@ void DB::schedule() {
 void DB::compaction() {
     compaction_thread_scheduled = true;
     if(imm_mem.sl){
-        level_0->MinorCompaction(imm_mem);
+        if(levels.empty()) levels.push_back(new Level(option, *manifest, 0, tbl_cache, blk_cache));
+        levels[0]->MinorCompaction(imm_mem);
     }
     if(option.MAJOR_COMPACTION_ENABLED){
-        if(level_0->Space()>=option.MAX_LEVEL_0_SIZE || level_0->GetSSTables().size()>=option.MAX_LEVEL_0_FILES){
-            if(level_n0.empty()){
-                level_n0.push_back(new LevelNonZero(option, *manifest, 1, tbl_cache, blk_cache));
-            }
-            level_n0[0]->MajorCompaction((Level*)level_0);
-        }
-        for(int i=0;i<level_n0.size()&&i<option.MAX_LEVEL-1;i++){
-            if(level_n0[i]->Space()>=((option.MAX_LEVEL_0_SIZE)<<(i+1))){
-                // Level i+1 占用空间过大
-                if(i+1>=level_n0.size()) {
-                    level_n0.push_back(new LevelNonZero(option, *manifest, i+2, tbl_cache, blk_cache));
+        for(int i=0;i<levels.size()&&i<option.MAX_LEVEL-1;i++){
+            if((i==0 && levels[i]->GetSSTables().size()>=option.MAX_LEVEL_0_FILES) || (levels[i]->Space()>=((option.MAX_LEVEL_0_SIZE)<<i))){
+                // Level i 占用空间过大 或 Level 0文件数量超过上限
+                if(i+1>=levels.size()) {
+                    levels.push_back(new Level(option, *manifest, i+1, tbl_cache, blk_cache));
                 }
-                level_n0[i+1]->MajorCompaction((Level*)level_n0[i]);
+                levels[i+1]->MajorCompaction((Level*)levels[i]);
             }
         }
     }

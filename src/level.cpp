@@ -1,13 +1,13 @@
-# include "levelnonzero.h"
+# include "level.h"
 # include <queue>
 # include <stack>
 
-LevelNonZero::LevelNonZero(Option &op, Manifest &manifest, int level, Cache *tablecache, Cache *blockcache): Level(),
-    option(op),_manifest(manifest), tbl_cache(tablecache), blk_cache(blockcache), _level(level){}
+Level::Level(Option &op, Manifest &manifest, int level, Cache *tablecache, Cache *blockcache): option(op),_manifest(manifest),
+tbl_cache(tablecache), blk_cache(blockcache), _level(level){}
 
-LevelNonZero::LevelNonZero(Option &op, Manifest &manifest, int level, Utils::LevelMetaDataType &levelmetadata, Cache *tablecache,
-                           Cache *blockcache): Level(), option(op), _manifest(manifest), tbl_cache(tablecache),blk_cache(blockcache),
-                           _level(level){
+Level::Level(Option &op, Manifest &manifest, int level, Utils::LevelMetaDataType &levelmetadata, Cache *tablecache,
+                           Cache *blockcache): option(op), _manifest(manifest), tbl_cache(tablecache),blk_cache(blockcache),
+                                               _level(level){
     for(auto sst: levelmetadata){
         auto id = sst.first;
         ssts.push_back(new SSTable(op, id, op.DB_PATH + std::to_string(id) + std::string(".sst"),
@@ -15,14 +15,14 @@ LevelNonZero::LevelNonZero(Option &op, Manifest &manifest, int level, Utils::Lev
     }
 }
 
-LevelNonZero::~LevelNonZero() {
+Level::~Level() {
     for(auto sst: ssts){
         delete sst;
     }
 }
 
 // 从当前Level中获得键key的值并返回。若键key不存在，则is_failed对应的bool变量设置为true，表示查询失败；否则设置为false，表示查询成功。
-std::string LevelNonZero::Get(uint64_t key, bool *is_failed) const {
+std::string Level::Get(uint64_t key, bool *is_failed) const {
     bool failed;
     std::string val;
     std::shared_lock Lock(level_mutex);
@@ -39,12 +39,12 @@ std::string LevelNonZero::Get(uint64_t key, bool *is_failed) const {
 }
 
 // 获得当前Level的所有SSTable
-const std::vector<SSTable*>& LevelNonZero::GetSSTables() const {
+const std::vector<SSTable*>& Level::GetSSTables() const {
     return ssts;
 }
 
 // 清空当前Level
-void LevelNonZero::Clear() {
+void Level::Clear() {
     for(auto sst:ssts){
         // 删除相关cache
         tbl_cache->Evict(sst->GetID());
@@ -61,7 +61,7 @@ void LevelNonZero::Clear() {
 
 struct priority_queue_type{
     priority_queue_type(std::pair<uint64_t, std::string> _kv, IterableSSTable* _isst, int _level, uint64_t _id):
-        kv(_kv),isst(_isst),level(_level),id(_id) {}
+            kv(_kv),isst(_isst),level(_level),id(_id) {}
     std::pair<uint64_t, std::string> kv;
     IterableSSTable* isst;
     int level;
@@ -75,11 +75,11 @@ struct priority_queue_type{
 };
 
 // MajorCompaction
-void LevelNonZero::MajorCompaction(Level *last_level) {
+void Level::MajorCompaction(Level *last_level) {
     std::vector<SSTable*> new_ssts;
     int cur_sst_id = 0;
     SSTable *cur_sst = new SSTable(option, option.DB_PATH + std::string("level") + std::to_string(_level)+
-        std::string(".sst.tmp.") + std::to_string(cur_sst_id),tbl_cache, blk_cache);
+                                           std::string(".sst.tmp.") + std::to_string(cur_sst_id),tbl_cache, blk_cache);
     cur_sst->CreateSSTFile();
     new_ssts.push_back(cur_sst);
 
@@ -184,4 +184,26 @@ void LevelNonZero::MajorCompaction(Level *last_level) {
         new_ssts[i]->Rename(sst_ids[i], option.DB_PATH + std::to_string(sst_ids[i]) + ".sst");
         ssts.push_back(new_ssts[i]);
     }
+}
+
+// 执行MinorCompaction
+void Level::MinorCompaction(Utils::ImmutableMemTable& imm_mem) {
+    SSTable* new_sst = new SSTable(option, option.DB_PATH + std::string("level0.sst.tmp"),
+                                   tbl_cache, blk_cache);
+
+    // 1. 把数据从Immutable MemTable中dump到SSTable文件
+    new_sst->BuildFromMem(*(imm_mem.sl));
+    auto min_key = new_sst->GetMinKey();
+    auto max_key = new_sst->GetMaxKey();
+
+    // 2. 添加一个新的Record到manifest文件，并获得文件id
+    auto newid = _manifest.CreateSSTRecord(0, min_key, max_key);
+
+    // 3. 重命名文件，并将文件加入到SSTable列表中，删除Immutable MemTable
+    new_sst->Rename(newid, option.DB_PATH + std::to_string(newid) + ".sst");
+    std::unique_lock Lock1(level_mutex);
+    std::unique_lock Lock2(imm_mem.mutex);
+    ssts.push_back(new_sst);
+    delete imm_mem.sl;
+    imm_mem.sl = nullptr;
 }

@@ -9,8 +9,6 @@ using namespace std;
 #define INSERT_COUNT 5000000
 #define GET_COUNT 100000
 
-#define EXPECT(expr) if(!(expr)){std::cout<<"Expectation failed: "<<#expr<<std::endl;exit(-1);}
-
 // 生成随机字符串
 string strRand(int length) {			// length: 产生字符串的长度
     char tmp;							// tmp: 暂存一个随机数
@@ -73,8 +71,7 @@ int main(){
     auto start_get = chrono::system_clock::now();
     for(int i=0;i<GET_COUNT;i++){
         auto& kv = v[random()%sz_v];
-        auto str = db.Get(kv.first);
-        EXPECT(str == kv.second)
+        db.Get(kv.first);
     }
     auto end_get = chrono::system_clock::now();
     auto duration_get = chrono::duration_cast<chrono::microseconds>(end_get - start_get);
