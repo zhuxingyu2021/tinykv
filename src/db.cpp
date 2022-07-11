@@ -57,9 +57,7 @@ DB::DB(Option& op):compaction_thread(nullptr), compaction_thread_scheduled(false
 }
 
 DB::~DB() {
-    if(compaction_thread){
-        if(compaction_thread->joinable()) compaction_thread->join();
-    }
+    while(compaction_thread_scheduled);
     assert(imm_mem.sl==nullptr);
 
     option.MAJOR_COMPACTION_ENABLED= false;
@@ -128,10 +126,6 @@ void DB::Del(uint64_t key) {
 void DB::schedule() {
     if(!compaction_thread_scheduled){
         if(mem->Space()>=option.MAX_MEMTABLE_SIZE) { // 若MemTable超过一定大小，就调度compaction线程执行minor compaction
-            if(compaction_thread){
-                if(compaction_thread->joinable()) compaction_thread->join();
-            }
-
             assert(imm_mem.sl==nullptr);
             // 将MemTable转变为Immutable MemTable
             imm_mem.sl = mem;
@@ -140,6 +134,8 @@ void DB::schedule() {
             compaction_thread_scheduled = true;
             delete compaction_thread;
             compaction_thread = new std::thread(&DB::compaction, this);
+
+            compaction_thread->detach();
         }
     }
 }

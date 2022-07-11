@@ -173,7 +173,7 @@ void SSTable::WriteDataBlock(uint64_t key, const std::string &value) {
             delete[] buf_ib;
             buf_ib = new_buffer;
         }
-        *((uint64_t*)(buf_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
+        *((uint64_t*)(buf_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock的最大键
         offset_ib += sizeof(uint64_t);
         *((size_t*)(buf_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
         offset_ib += sizeof(size_t);
@@ -207,7 +207,7 @@ void SSTable::WriteMetaData() {
             delete[] buf_ib;
             buf_ib = new_buffer;
         }
-        *((uint64_t*)(buf_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock键值最大值
+        *((uint64_t*)(buf_ib + offset_ib)) = max_db_key; // IndexBlock Entry第一项：DataBlock的最大键
         offset_ib += sizeof(uint64_t);
         *((size_t*)(buf_ib + offset_ib)) = pos_db; // IndexBlock Entry第二项：DataBlock起始地址
         offset_ib += sizeof(size_t);

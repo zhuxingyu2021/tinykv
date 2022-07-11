@@ -13,7 +13,7 @@ public:
     LevelZero(Option& op, Manifest& manifest, Cache* tablecache, Cache* blockcache);
     LevelZero(Option& op, Manifest& manifest, Utils::LevelMetaDataType& levelmetadata, Cache* tablecache, Cache* blockcache);
 
-    ~LevelZero();
+    virtual ~LevelZero();
 
     virtual std::string Get(uint64_t key, bool* is_failed) const;
     virtual int GetLevel() const{return 0;}

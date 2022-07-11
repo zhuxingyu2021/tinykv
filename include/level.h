@@ -20,6 +20,8 @@ public:
     virtual void Clear() {std::cerr << "Error!" << std::endl;
         exit(-1);}
 
+    virtual ~Level(){}
+
     mutable std::shared_mutex level_mutex;
 };
 

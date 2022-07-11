@@ -24,3 +24,7 @@ target_link_libraries(lsmtree PRIVATE Threads::Threads)
 
 add_executable(TestCorrectness ${PROJECT_SOURCE_DIR}/test/TestCorrectness.cpp)
 target_link_libraries(TestCorrectness lsmtree)
+add_executable(BenchmarkSequantial ${PROJECT_SOURCE_DIR}/test/BenchmarkSequantial.cpp)
+target_link_libraries(BenchmarkSequantial lsmtree)
+add_executable(BenchmarkRandom ${PROJECT_SOURCE_DIR}/test/BenchmarkRandom.cpp)
+target_link_libraries(BenchmarkRandom lsmtree)

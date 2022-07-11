@@ -1,16 +1,12 @@
-#include "db.h"
-#include <iostream>
-#include <map>
-#include <random>
-#include <cassert>
-
+# include <iostream>
+# include <map>
+# include <random>
 # include <chrono>
-
-#define EXPECT(expr) if(!(expr)){std::cout<<"Expectation failed: "<<#expr<<std::endl;exit(-1);}
-
-#define INSERT_COUNT 10000000
+# include "db.h"
 
 using namespace std;
+
+#define INSERT_COUNT 8000000
 
 // 生成随机字符串
 string strRand(int length) {			// length: 产生字符串的长度
@@ -34,8 +30,7 @@ string strRand(int length) {			// length: 产生字符串的长度
     return buffer;
 }
 
-int main()
-{
+int main(){
     std::map<uint64_t ,std::string> m;
 
     Option default_option;
@@ -54,29 +49,31 @@ int main()
 
     for(int i=0;i<INSERT_COUNT;i++){
         auto key = random();
-        std::string val = strRand(random()%25);
-        db.Put(key, val);
+        std::string val = strRand(25);
         m[key] = val;
     }
 
+    // 测试顺序写性能
+    auto start_put = chrono::system_clock::now();
     for(auto kv:m){
-        // 测试Put/Get
-        auto val = db.Get(kv.first);
-        EXPECT(val == kv.second);
-
-        db.Del(kv.first);
+        db.Put(kv.first, kv.second);
     }
+    auto end_put = chrono::system_clock::now();
+    auto duration_put = chrono::duration_cast<chrono::microseconds>(end_put - start_put);
+    double second_put = double(duration_put.count()) * chrono::microseconds::period::num / chrono::microseconds::period::den;
 
-    std::cout << "Test Put/Get Success!" << std::endl;
+    cout <<  "SEQ Write: " << INSERT_COUNT/second_put << " OPS" << endl;
 
+    // 测试顺序读性能
+    auto start_get = chrono::system_clock::now();
     for(auto kv:m){
-        // 测试Del
-        auto val = db.Get(kv.first);
-        assert(val == "");
+        db.Get(kv.first);
     }
+    auto end_get = chrono::system_clock::now();
+    auto duration_get = chrono::duration_cast<chrono::microseconds>(end_get - start_get);
+    double second_get = double(duration_get.count()) * chrono::microseconds::period::num / chrono::microseconds::period::den;
 
-    std::cout << "Test Delete Success!" << std::endl;
-    return 0;
+    cout <<  "SEQ Read: " << m.size()/second_get << " OPS" << endl;
+
 }
-
 
