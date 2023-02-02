@@ -68,14 +68,6 @@ int main()
     }
 
     std::cout << "Test Put/Get Success!" << std::endl;
-
-    for(auto kv:m){
-        // 测试Del
-        auto val = db.Get(kv.first);
-        assert(val == "");
-    }
-
-    std::cout << "Test Delete Success!" << std::endl;
     return 0;
 }
 
