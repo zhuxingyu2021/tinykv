@@ -21,6 +21,9 @@ struct Option{
     int MAX_LEVEL_0_FILES=3;
     size_t MAX_LEVEL_0_SIZE=1024*1024*64;
 
+    static const size_t BLOOM_BITS = 8192;
+    static const size_t BLOOM_FUNC_CNT = 4;
+
     bool BLOCKCACHE_ENABLED=true;
     bool TABLECHCHE_ENABLED=true;
 

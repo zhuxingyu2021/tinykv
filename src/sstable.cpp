@@ -15,12 +15,21 @@ SSTable::SSTable(Option& op, std::string&& path, Cache* tablecache, Cache* block
 // 从文件构造SSTable
 SSTable::SSTable(Option &op, uint64_t id, std::string &&path, Cache *tablecache, Cache *blockcache, uint64_t minkey, uint64_t maxkey):
 tbl_id(id),path(path),tbl_cache(tablecache),blk_cache(blockcache), option(op), min_key(minkey), max_key(maxkey),writer(
-        nullptr),buf_db(nullptr),buf_ib(nullptr),ib_sz(0),ib_pos(0),first_write(true),offset_db(0),offset_ib(0),pos_db(0){
+        nullptr),buf_db(nullptr),buf_ib(nullptr),first_write(true),offset_db(0),offset_ib(0),pos_db(0){
     std::ifstream reader(path, std::ios::in | std::ios::binary);
     if(reader.good()){ // 从文件中读取footer信息
         reader.seekg(-FOOTER_SIZE, std::ios::end);
         reader.read((char*)&ib_pos, sizeof(size_t));
         reader.read((char*)&ib_sz, sizeof(size_t));
+        reader.read((char*)&bf_pos, sizeof(size_t));
+        reader.read((char*)&bf_sz, sizeof(size_t));
+
+        // 读取BloomFilter
+        reader.seekg(bf_pos, std::ios::beg);
+        if(!bloom_filter.ReadFromFile(reader, bf_sz)){
+            std::cerr << "Reading BloomFilter failed!" << std::endl;
+            exit(-1);
+        }
     }else{
         std::cerr << "SSTable " << path << " can't find!" << std::endl;
         exit(-1);
@@ -40,6 +49,13 @@ std::string SSTable::Get(uint64_t key, bool* is_failed) const {
     std::ifstream* reader = nullptr;
     std::map<uint64_t, std::pair<size_t, size_t>>* ib = nullptr;
     std::map<uint64_t,std::string>* db = nullptr;
+
+    // 0. 验证key是否存在于BloomFilter
+    if(bloom_filter.NotExist(key)){
+        // BloomFilter中不存在key
+        *is_failed = true;
+        return "";
+    }
 
     // 1. 读取IndexBlock
     if(tbl_cache){
@@ -189,6 +205,9 @@ void SSTable::WriteDataBlock(uint64_t key, const std::string &value) {
     offset_db += sizeof(uint64_t);
     memcpy(buf_db + offset_db, value.c_str(), lenval); //DataBlock Entry第三项：value
     offset_db += lenval;
+
+    // 将key加入BloomFilter
+    bloom_filter.Add(key);
 }
 
 // 将IndexBlock写入文件并写入footer信息
@@ -223,9 +242,15 @@ void SSTable::WriteMetaData() {
     ib_sz = offset_ib; // IndexBlock的大小
     writer->write(buf_ib, offset_ib);
 
+    // 向文件中写入BloomFilter
+    bf_pos = ib_pos + ib_sz;
+    bf_sz = bloom_filter.WriteToFile(*writer);
+
     // 写入footer信息
     writer->write((char*)&ib_pos, sizeof(size_t));
     writer->write((char*)&ib_sz, sizeof(size_t));
+    writer->write((char*)&bf_pos, sizeof(size_t));
+    writer->write((char*)&bf_sz, sizeof(size_t));
 
     delete[] buf_db;
     delete[] buf_ib;

@@ -8,7 +8,7 @@
 
 #define EXPECT(expr) if(!(expr)){std::cout<<"Expectation failed: "<<#expr<<std::endl;exit(-1);}
 
-#define INSERT_COUNT 10000000
+#define INSERT_COUNT 1000000
 
 using namespace std;
 

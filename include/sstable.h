@@ -8,6 +8,7 @@
 #include "cache.h"
 #include "skiplist.h"
 #include "option.h"
+#include "bloom.h"
 
 class SSTable{
 public:
@@ -37,7 +38,7 @@ public:
     size_t GetIndexBlockSize() const{return ib_sz;}
 
     // footer区域的大小
-    static const long FOOTER_SIZE=2*sizeof(size_t);
+    static const long FOOTER_SIZE=4*sizeof(size_t);
 
     size_t GetFileSize() const{return ib_pos+ib_sz;}
 private:
@@ -50,6 +51,10 @@ private:
     size_t ib_sz; //IndexBlock大小
     Cache* tbl_cache;
     Cache* blk_cache;
+
+    BloomFilter bloom_filter; //布隆过滤器
+    size_t bf_pos; //BloomFilter在文件中的位置
+    size_t bf_sz; //BloomFilter的大小
 
     Option& option;
 
