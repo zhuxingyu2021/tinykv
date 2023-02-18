@@ -5,6 +5,7 @@
 #include <shared_mutex>
 #include "sstable.h"
 #include <vector>
+#include <list>
 #include <string>
 #include <iostream>
 #include "skiplist.h"
@@ -23,7 +24,7 @@ public:
     std::string Get(uint64_t key, bool* is_failed) const;
     int GetLevel() const{return _level;}
 
-    const std::vector<SSTable*>& GetSSTables() const;
+    const std::list<SSTable *> & GetSSTables() const;
 
     void Clear();
 
@@ -42,7 +43,7 @@ public:
 
 private:
 
-    std::vector<SSTable*> ssts;
+    std::list<SSTable*> ssts;
 
     Cache* tbl_cache; // TableCache
     Cache* blk_cache; // BlockCache

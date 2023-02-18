@@ -5,6 +5,7 @@
 #include <cassert>
 
 # include <chrono>
+#include <unistd.h>
 
 #define EXPECT(expr) if(!(expr)){std::cout<<"Expectation failed: "<<#expr<<std::endl;exit(-1);}
 
@@ -68,6 +69,14 @@ int main()
     }
 
     std::cout << "Test Put/Get Success!" << std::endl;
+
+    for(auto kv:m){
+        // 测试Del
+        auto val = db.Get(kv.first);
+        EXPECT(val == "");
+    }
+
+    std::cout << "Test Delete Success!" << std::endl;
     return 0;
 }
 

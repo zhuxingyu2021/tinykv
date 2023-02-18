@@ -39,7 +39,7 @@ std::string Level::Get(uint64_t key, bool *is_failed) const {
 }
 
 // 获得当前Level的所有SSTable
-const std::vector<SSTable*>& Level::GetSSTables() const {
+const std::list<SSTable*>& Level::GetSSTables() const {
     return ssts;
 }
 
@@ -83,7 +83,7 @@ void Level::MajorCompaction(Level *last_level) {
     cur_sst->CreateSSTFile();
     new_ssts.push_back(cur_sst);
 
-    const std::vector<SSTable*>& last_level_ssts = last_level->GetSSTables();
+    const std::list<SSTable*>& last_level_ssts = last_level->GetSSTables();
     std::vector<IterableSSTable*> last_level_issts;
     last_level_issts.reserve(last_level_ssts.size());
     std::vector<IterableSSTable*> this_level_issts;
@@ -203,7 +203,7 @@ void Level::MinorCompaction(Utils::ImmutableMemTable& imm_mem) {
     new_sst->Rename(newid, option.DB_PATH + std::to_string(newid) + ".sst");
     std::unique_lock Lock1(level_mutex);
     std::unique_lock Lock2(imm_mem.mutex);
-    ssts.push_back(new_sst);
+    ssts.push_front(new_sst);
     delete imm_mem.sl;
     imm_mem.sl = nullptr;
 }
